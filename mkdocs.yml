@@ -1,0 +1,11 @@
+site_name: Wing
+
+nav:
+  - Home: index.md
+  - "Project 1":
+    - "Overview": p1/overview.md
+    - "Part 1": p1/part1.md
+    - "Part 2": p1/part2.md
+    - "Part 3": p1/part3.md
+
+theme: readthedocs
