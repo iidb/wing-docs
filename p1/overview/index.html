@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Overview";
-        var mkdocs_page_input_path = "p1/overview.md";
+        var mkdocs_page_input_path = "p1\\overview.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -47,6 +47,14 @@
               <ul class="current">
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">Overview</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#record-format">Record Format</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#get">Get</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#put-and-delete">Put and Delete</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#scan">Scan</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../part1/">Part 1</a>
@@ -80,8 +88,40 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="project-1">Project 1</h1>
-<p>LSM-tree</p>
+                <h2 id="lsm-basic">LSM Basic</h2>
+<p>The architecture of the LSM-tree in Wing is as follows.</p>
+<p><img alt="" src="../lsm_pics/arch.png" /></p>
+<p><code>DBImpl</code>: At the highest level, the <code>DBImpl</code> is the primary component responsible for interacting with users. It references the most recent <code>SuperVersion</code> of the database.</p>
+<p><code>SuperVersion</code>: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree <code>Version</code>, which together represent the current state of the database.</p>
+<p><code>MemTable</code>: An in-memory ordered data structure. It is flushed to disk when it reaches its capacity.</p>
+<p><code>Version</code>: An array of levels, representing the on-disk LSM-tree.</p>
+<p><code>Level</code>: It is composed of one or more sorted runs. </p>
+<p><code>SortedRun</code>: It can be viewed as a sorted key-value array which is divided into several SSTables.</p>
+<p><code>SSTable</code>: It is composed of data blocks, an index, bloom filter and metadata.</p>
+<p><code>Block</code>: It stores records.</p>
+<h3 id="record-format">Record Format</h3>
+<p>Records in the database are structured as <code>(key, seq, type, value)</code> tuple, where <code>seq</code> denotes the timestamp (or sequence number) and <code>type</code> denotes the record type. A record with <code>type=RecordType::Value</code> represents the key-value pair at the timestamp <code>seq</code>. When <code>type</code> equals to <code>RecordType::Deletion</code>, the record indicates that the key has been marked for deletion at the timestamp <code>seq</code>.</p>
+<p><code>(key, seq, type)</code> is called the internal key of record (see <code>lsm/format.hpp</code>) because <code>seq</code> and <code>type</code> are invisible to users. We can define a comparing function to sort them: for two internal keys <code>(key0, seq0, type0)</code> and <code>(key1, seq1, type1)</code>, the former is smaller than the latter if and only if <code>key0 &lt; key1</code> or <code>key0 == key1 &amp;&amp; seq0 &gt; seq1</code>. With this comparing function, for <code>(key, seq)</code>, the newest record with the same key and a sequence number <code>seq0 &lt;= seq</code> is the first record <code>(key0, seq0)</code> with <code>(key, seq) &lt;= (key0, seq0)</code>.</p>
+<h3 id="get">Get</h3>
+<p><code>DBImpl::Get(key, seq, &amp;value_str)</code> function is designed to retrieve records from the database. It looks for the first record <code>(key0, seq0, type0)</code> satisfying <code>key0 == key &amp;&amp; seq0 &lt;= seq</code>. If the record is a record with type <code>RecordType::Deletion</code> or no such record exists, the function returns false, indicating the requested value is not found. If a record with type <code>RecordType::Value</code> is found, the function returns true and copies the associated value into <code>value_str</code>.</p>
+<p>The process of <code>Get</code> is:</p>
+<ul>
+<li>
+<p>Check if MemTable has the record. If not, check if immutable MemTables have the record. It checks from the newest immutable MemTable to the oldest immutable MemTable. It stops once it finds the record. If they do not have the record, proceed to check the on-disk LSM-tree.</p>
+</li>
+<li>
+<p>Check if Level 0 has the record, then Level 1, 2, and so on. For each level, it performs a binary search to find the SSTable that possibly has the record. Then it queries the bloom filter. If further inquiry is necessary, it performs a binary search on the SSTable's index to find the data block. It reads the data block from the disk, and performs a binary search to find the record.</p>
+</li>
+</ul>
+<h3 id="put-and-delete">Put and Delete</h3>
+<p><code>DBImpl::Put(key, seq)</code> creates a new record <code>(key, seq, RecordType::Value, value)</code> and <code>DBImpl::Del(key, seq)</code> creates a new record <code>(key, seq, RecordType::Deletion)</code>. Once a record is created, it is inserted to the MemTable. For convenience, a lock is employed to ensure that only a single writer can perform operations at any given time.</p>
+<p>If the MemTable reaches its capacity, it creates a new superversion and moves the MemTable to the immutable MemTable list and create a new MemTable. </p>
+<p>The database has 2 threads to persist the data to disk: the flush thread and the compaction thread. The flush thread is awakened whenever a new immutable MemTable is created. It flushes the immutable MemTables to the first level (Level 0) of the LSM-tree. Every time an immutable Memtable is flushed, the compaction thread is awakened. It acquires new compaction tasks through <code>CompactionPicker::Get</code>. Once it has tasks, it proceeds to execute them and subsequently updates the superversion.</p>
+<h3 id="scan">Scan</h3>
+<p>The database supports range scans. <code>DBImpl::Begin()</code> returns an iterator positioned to the beginning of the data, while <code>DBImpl::Seek(key, seq)</code> returns an iterator positioned to the first record <code>(key0, seq0, type0)</code> satisfying <code>(key, seq) &lt;= (key0, seq0)</code>.</p>
+<p>Scan operations are performed in a snapshot. When a <code>DBIterator</code> is created, it stores the current sequence number. It can only see the records with sequence number smaller than the stored sequence number.</p>
+<p>The architecture of iterators is as follows. <code>BlockIterator</code> is the iterator on data blocks. <code>SSTableIterator</code> is the iterator on SSTables and contains a <code>BlockIterator</code>. <code>SortedRunIterator</code> is the iterator on sorted runs and contains a <code>SSTableIterator</code>. <code>SuperVersionIterator</code> is the iterator on superversions, it contains all the <code>SortedRunIterator</code>s and <code>MemTableIterator</code>s using <code>IteratorHeap</code>, which maintains the record with the minimum internal key by maintaining iterators in a heap. There is no <code>LevelIterator</code> or <code>VersionIterator</code> because it is inefficient to maintain two <code>IteratorHeap</code>s. The <code>DBIterator</code> operates at the highest level, merging records with the same key and skipping the keys which are marked deleted.</p>
+<p><img alt="" src="../lsm_pics/iters.png" /></p>
               
             </div>
           </div><footer>
