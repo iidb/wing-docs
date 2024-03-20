@@ -1,3 +1,3 @@
 # Part 3
 
-Explore
+In part 3, you will implement more compaction strategies. 
