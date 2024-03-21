@@ -61,6 +61,8 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#filereader">FileReader</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#bloom-filter">Bloom filter</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#test_1">Test</a>
     </li>
         </ul>
@@ -145,8 +147,9 @@
 <p>You can implement the format as follows:</p>
 <p><img alt="" src="../lsm_pics/sst_format.png" /></p>
 <p>where data blocks are <code>Block</code>.</p>
-<p>The index consists of the last key and the <code>BlockHandle</code> of each <code>Block</code>, as defined in <code>IndexValue</code> in <code>storage/lsm/format.hpp</code>. It is used to locate data block in <code>SSTable::Get</code>, <code>SSTable::Seek</code> and <code>SSTableIterator::Seek</code>.</p>
-<p>You will implement <code>SSTableBuilder::Append</code> and <code>SSTable::Finish</code> while maintaining the information about the SSTable: <code>index_data_</code> (the index data), <code>index_offset_</code> (the offset of the index block), <code>largest_key_</code> and <code>smallest_key_</code> (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the <code>SSTable</code> structure. You can use <code>BlockBuilder</code> to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use <code>Block</code> to store index data.</p>
+<p>The index consists of the last key and the <code>BlockHandle</code> of each <code>Block</code>, as defined in <code>IndexValue</code> in <code>storage/lsm/format.hpp</code>. It is utilized to locate data block in <code>SSTable::Get</code>, <code>SSTable::Seek</code> and <code>SSTableIterator::Seek</code>. It is preloaded to the memory when opening the SSTable.</p>
+<p>The bloom filter is used to test whether a key may exist in the SSTable during <code>SSTable::Get</code>. It is also preloaded to the memory.</p>
+<p>You will implement <code>SSTableBuilder::Append</code> and <code>SSTableBuilder::Finish</code> while maintaining the information about the SSTable: <code>index_data_</code> (the index data), <code>index_offset_</code> (the offset of the index block), <code>largest_key_</code> and <code>smallest_key_</code> (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the <code>SSTable</code> structure. You can use <code>BlockBuilder</code> to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use <code>Block</code> to store index data.</p>
 <h3 id="filewriter">FileWriter</h3>
 <p>You should use <code>FileWriter</code> to implement <code>SSTableBuilder</code>, <code>BlockBuilder</code>. It collects data and writes them to disk in batch. <code>FileWriter</code> provides two methods <code>AppendValue&lt;T&gt;</code> and <code>AppendString</code>. You can use <code>AppendValue&lt;T&gt;</code> to copy a value of type <code>T</code> to the file. <code>T</code> is a template parameter, it can be <code>uint64_t</code>, <code>float</code>, or structured data which do not have pointers, such as <code>std::pair&lt;uint64_t, uint64_t&gt;</code> and <code>BlockHandle</code>. For string data, you can use <code>AppendString</code>. Here is an example of usage:</p>
 <pre><code class="language-c++">std::string str(&quot;114514&quot;);
@@ -161,6 +164,10 @@ reader.Seek(offset);
 auto len = reader.ReadValue&lt;uint64_t&gt;();
 auto str = reader.ReadString(len);
 </code></pre>
+<h3 id="bloom-filter">Bloom filter</h3>
+<p>You will build a bloom filter for each SSTable. If you are not familiar with bloom filter, you can read about it in resources such as <a href="https://en.wikipedia.org/wiki/Bloom_filter">link</a>. Basically, bloom filter is a bit array. For each key, it set some bits to 1. The positions of these bits are calculated using hash functions. Then, for each key, if all the corresponding bits are 1, the key may exist, otherwise it does not. </p>
+<p>We have implemeneted a bloom filter for you, which can be found in <code>common/bloomfilter.hpp</code> and <code>common/bloomfilter.cpp</code>. <code>BloomFilter::Create</code> create a bloom filter. <code>BloomFilter::Add</code> add a key to the bloom filter. Since we only use the hash of keys, you can pass the hash to <code>BloomFilter::Add</code>. <code>BloomFilter::Find</code> checks if a key may exist in the bloom filter. It can also accept the hash of keys.</p>
+<p>In <code>SSTableBuilder</code>, you should record the hashes of keys in <code>SSTableBuilder::Append</code> and use them to build a bloom filter in <code>SSTableBuilder::Finish</code>.</p>
 <h3 id="test_1">Test</h3>
 <p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.SSTableTest</code></p>
 <h2 id="sortedrun">SortedRun</h2>
