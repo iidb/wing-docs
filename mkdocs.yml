@@ -9,3 +9,9 @@ nav:
     - "Part 3": p1/part3.md
 
 theme: readthedocs
+
+markdown_extensions:
+  - pymdownx.arithmatex
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML
