@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Part 2";
-        var mkdocs_page_input_path = "p1\\part2.md";
+        var mkdocs_page_input_path = "p1/part2.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -107,7 +107,7 @@
 </ul>
 <h2 id="leveled-compaction-strategy">Leveled compaction strategy</h2>
 <p>You will implement the leveled compaction strategy. This strategy is the default strategy of RocksDB.</p>
-<p>The leveled compaction strategy in Wing is as follows: Suppose the size ratio is $T$, and the size limit of Level 0 is $B$. The size limit of Level 1, 2, 3 $\cdots$ is $BT,BT^2,BT^3\cdots$ Level 0 consists of multiple sorted runs flushed by <code>DBImpl::FlushThread</code>, each sorted run has 1 or 2 SSTables. If the number of sorted runs is larger than 4, all the sorted runs are compacted to the next level. If the number of sorted runs reaches 20, then <code>DBImpl::FlushThread</code> stops to flush until they are compacted to the next level. Level 1, 2, 3 $\cdots$ consists of only one sorted run. If one of them reaches its capacity, it picks an SSTable with the minimum overlapping with the next level, and compact the SSTable with the next level.</p>
+<p>The leveled compaction strategy in Wing is as follows: Suppose the size ratio is <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span>, and the size limit of Level 0 is <span class="arithmatex"><span class="MathJax_Preview">B</span><script type="math/tex">B</script></span>. The size limit of Level 1, 2, 3 <span class="arithmatex"><span class="MathJax_Preview">\cdots</span><script type="math/tex">\cdots</script></span> is <span class="arithmatex"><span class="MathJax_Preview">BT,BT^2,BT^3\cdots</span><script type="math/tex">BT,BT^2,BT^3\cdots</script></span> Level 0 consists of multiple sorted runs flushed by <code>DBImpl::FlushThread</code>, each sorted run has 1 or 2 SSTables. If the number of sorted runs is larger than 4, all the sorted runs are compacted to the next level. If the number of sorted runs reaches 20, then <code>DBImpl::FlushThread</code> stops to flush until they are compacted to the next level. Level 1, 2, 3 <span class="arithmatex"><span class="MathJax_Preview">\cdots</span><script type="math/tex">\cdots</script></span> consists of only one sorted run. If one of them reaches its capacity, it picks an SSTable with the minimum overlapping with the next level, and compact the SSTable with the next level.</p>
 <p>In LeveledCompactionPicker::Get, you must check for the existence of a compaction task. If one exists, you must create and return a <code>std::unique_ptr&lt;Compaction&gt;</code>. Otherwise, return a nullptr.</p>
 <h2 id="dbimplcompactionjob">DBImpl::CompactionJob</h2>
 <p>You will implement CompactionJob::Run. It receives an iterator and writes the iterator's output to disk. You should merge the records with the same key. The output is divided into SSTables, with the size of records in each SSTable not exceeding the target SSTable size (refer to sst_file_size in storage/lsm/options.hpp). The actual SSTable size may be larger than the target SSTable size since we have index data and metadata. </p>
@@ -157,6 +157,7 @@
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
       <script src="../../search/main.js"></script>
     <script>
         jQuery(function () {
