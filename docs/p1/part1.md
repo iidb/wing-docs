@@ -36,9 +36,11 @@ You can implement the format as follows:
 
 where data blocks are `Block`.
 
-The index consists of the last key and the `BlockHandle` of each `Block`, as defined in `IndexValue` in `storage/lsm/format.hpp`. It is used to locate data block in `SSTable::Get`, `SSTable::Seek` and `SSTableIterator::Seek`.
+The index consists of the last key and the `BlockHandle` of each `Block`, as defined in `IndexValue` in `storage/lsm/format.hpp`. It is utilized to locate data block in `SSTable::Get`, `SSTable::Seek` and `SSTableIterator::Seek`. It is preloaded to the memory when opening the SSTable.
 
-You will implement `SSTableBuilder::Append` and `SSTable::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
+The bloom filter is used to test whether a key may exist in the SSTable during `SSTable::Get`. It is also preloaded to the memory.
+
+You will implement `SSTableBuilder::Append` and `SSTableBuilder::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
 
 ### FileWriter
 
@@ -62,6 +64,14 @@ reader.Seek(offset);
 auto len = reader.ReadValue<uint64_t>();
 auto str = reader.ReadString(len);
 ```
+
+### Bloom filter
+
+You will build a bloom filter for each SSTable. If you are not familiar with bloom filter, you can read about it in resources such as [link](https://en.wikipedia.org/wiki/Bloom_filter). Basically, bloom filter is a bit array. For each key, it set some bits to 1. The positions of these bits are calculated using hash functions. Then, for each key, if all the corresponding bits are 1, the key may exist, otherwise it does not. 
+
+We have implemeneted a bloom filter for you, which can be found in `common/bloomfilter.hpp` and `common/bloomfilter.cpp`. `BloomFilter::Create` create a bloom filter. `BloomFilter::Add` add a key to the bloom filter. Since we only use the hash of keys, you can pass the hash to `BloomFilter::Add`. `BloomFilter::Find` checks if a key may exist in the bloom filter. It can also accept the hash of keys.
+
+In `SSTableBuilder`, you should record the hashes of keys in `SSTableBuilder::Append` and use them to build a bloom filter in `SSTableBuilder::Finish`.
 
 ### Test
 
