@@ -101,7 +101,7 @@
 <p><code>Block</code>: It stores records.</p>
 <h3 id="record-format">Record Format</h3>
 <p>Records in the database are structured as <code>(key, seq, type, value)</code> tuple, where <code>seq</code> denotes the timestamp (or sequence number) and <code>type</code> denotes the record type. A record with <code>type=RecordType::Value</code> represents the key-value pair at the timestamp <code>seq</code>. When <code>type</code> equals to <code>RecordType::Deletion</code>, the record indicates that the key has been marked for deletion at the timestamp <code>seq</code>.</p>
-<p><code>(key, seq, type)</code> is called the internal key of record (see <code>lsm/format.hpp</code>) because <code>seq</code> and <code>type</code> are invisible to users. We can define a comparing function to sort them: for two internal keys <code>(key0, seq0, type0)</code> and <code>(key1, seq1, type1)</code>, the former is smaller than the latter if and only if <code>key0 &lt; key1</code> or <code>key0 == key1 &amp;&amp; seq0 &gt; seq1</code>. With this comparing function, for <code>(key, seq)</code>, the newest record with the same key and a sequence number <code>seq0 &lt;= seq</code> is the first record <code>(key0, seq0)</code> with <code>(key, seq) &lt;= (key0, seq0)</code>.</p>
+<p><code>(key, seq, type)</code> is called the internal key of record (see <code>storage/lsm/format.hpp</code>) because <code>seq</code> and <code>type</code> are invisible to users. We can define a comparing function to sort them: for two internal keys <code>(key0, seq0, type0)</code> and <code>(key1, seq1, type1)</code>, the former is smaller than the latter if and only if <code>key0 &lt; key1</code> or <code>key0 == key1 &amp;&amp; seq0 &gt; seq1</code>. With this comparing function, for <code>(key, seq)</code>, the newest record with the same key and a sequence number <code>seq0 &lt;= seq</code> is the first record <code>(key0, seq0)</code> with <code>(key, seq) &lt;= (key0, seq0)</code>.</p>
 <h3 id="get">Get</h3>
 <p><code>DBImpl::Get(key, seq, &amp;value_str)</code> function is designed to retrieve records from the database. It looks for the first record <code>(key0, seq0, type0)</code> satisfying <code>key0 == key &amp;&amp; seq0 &lt;= seq</code>. If the record is a record with type <code>RecordType::Deletion</code> or no such record exists, the function returns false, indicating the requested value is not found. If a record with type <code>RecordType::Value</code> is found, the function returns true and copies the associated value into <code>value_str</code>.</p>
 <p>The process of <code>Get</code> is:</p>
@@ -122,6 +122,20 @@
 <p>Scan operations are performed in a snapshot. When a <code>DBIterator</code> is created, it stores the current sequence number. It can only see the records with sequence number smaller than the stored sequence number.</p>
 <p>The architecture of iterators is as follows. <code>BlockIterator</code> is the iterator on data blocks. <code>SSTableIterator</code> is the iterator on SSTables and contains a <code>BlockIterator</code>. <code>SortedRunIterator</code> is the iterator on sorted runs and contains a <code>SSTableIterator</code>. <code>SuperVersionIterator</code> is the iterator on superversions, it contains all the <code>SortedRunIterator</code>s and <code>MemTableIterator</code>s using <code>IteratorHeap</code>, which maintains the record with the minimum internal key by maintaining iterators in a heap. There is no <code>LevelIterator</code> or <code>VersionIterator</code> because it is inefficient to maintain two <code>IteratorHeap</code>s. The <code>DBIterator</code> operates at the highest level, merging records with the same key and skipping the keys which are marked deleted.</p>
 <p><img alt="" src="../lsm_pics/iters.png" /></p>
+<p>The interfaces of <code>Iterator</code> can be found in <code>storage/lsm/iterator.hpp</code>. Here is an example of usage:</p>
+<pre><code class="language-c++">DBIterator it = ...; // create the iterator
+while (it.Valid()) {
+  // Read key and value of the current entry
+  auto key = it.key();
+  auto value = it.value();
+  // output key and value
+  DB_INFO(&quot;{}, {}&quot;, key, value);
+  // Move to the next entry
+  it.Next();
+  // After moving, key and value may be invalid because they are `Slice`s,
+  // i.e. references to a internal buffer in `it`.
+}
+</code></pre>
               
             </div>
           </div><footer>

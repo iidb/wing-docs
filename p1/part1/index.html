@@ -137,15 +137,15 @@
 <p><code>Block</code> stores internal keys and values. If you do not have time to design complex formats such as a compressed format, we highly recommend you to implement the simplest format as follows:</p>
 <p><img alt="" src="../lsm_pics/data_block_format.png" /></p>
 <p>where the block is divided into two parts, the first part consists of key-value pairs, while the second part is an array of offsets to the key-value pairs. </p>
-<p><code>BlockIterator</code> takes a pointer to the beginning of the <code>Block</code> and the <code>BlockHandle</code> of the <code>Block</code>. You can obtain useful information such as the number of key-value pairs and the size of the <code>Block</code> in <code>BlockHandle</code>. <code>BlockIterator::Seek(key, seq)</code> finds the first record larger than <code>(user_key, seq)</code> and moves to it (refer to the definition of the comparison operator in <code>lsm/format.hpp</code>). <code>BlockIterator::SeekToFirst</code> moves the iterator to the beginning. You can find the comments for <code>Next()</code>, <code>key()</code>, <code>value()</code> and <code>Valid()</code> in <code>lsm/iterator.hpp</code>.</p>
-<p><code>BlockBuilder</code> writes key-value pairs to the block until the block reaches the capacity (refer to <code>block_size</code> in <code>lsm/options.hpp</code>). You need to ensure that the size of the block do not exceed <code>block_size</code>. The offsets of key-value pairs are written after all the key-value pairs are written and <code>BlockBuilder::FinishBlock</code> is called, so you need to record the offsets while writing the data.</p>
+<p><code>BlockIterator</code> takes a pointer to the beginning of the <code>Block</code> and the <code>BlockHandle</code> of the <code>Block</code>. You can obtain useful information such as the number of key-value pairs and the size of the <code>Block</code> in <code>BlockHandle</code>. <code>BlockIterator::Seek(key, seq)</code> finds the first record larger than <code>(user_key, seq)</code> and moves to it (refer to the definition of the comparison operator in <code>storage/lsm/format.hpp</code>). <code>BlockIterator::SeekToFirst</code> moves the iterator to the beginning. You can find the comments for <code>Next()</code>, <code>key()</code>, <code>value()</code> and <code>Valid()</code> in <code>storage/lsm/iterator.hpp</code>.</p>
+<p><code>BlockBuilder</code> writes key-value pairs to the block until the block reaches the capacity (refer to <code>block_size</code> in <code>storage/lsm/options.hpp</code>). You need to ensure that the size of the block do not exceed <code>block_size</code>. The offsets of key-value pairs are written after all the key-value pairs are written and <code>BlockBuilder::FinishBlock</code> is called, so you need to record the offsets while writing the data.</p>
 <h3 id="test">Test</h3>
-<p>You can test it through <code>test/test_lsm --gtest_filter=*.BlockTest</code></p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.BlockTest</code></p>
 <h2 id="sstable">SSTable</h2>
 <p>You can implement the format as follows:</p>
 <p><img alt="" src="../lsm_pics/sst_format.png" /></p>
 <p>where data blocks are <code>Block</code>.</p>
-<p>The index consists of the last key and the <code>BlockHandle</code> of each <code>Block</code>, as defined in <code>IndexValue</code> in <code>lsm/format.hpp</code>. It is used to locate data block in <code>SSTable::Get</code>, <code>SSTable::Seek</code> and <code>SSTableIterator::Seek</code>.</p>
+<p>The index consists of the last key and the <code>BlockHandle</code> of each <code>Block</code>, as defined in <code>IndexValue</code> in <code>storage/lsm/format.hpp</code>. It is used to locate data block in <code>SSTable::Get</code>, <code>SSTable::Seek</code> and <code>SSTableIterator::Seek</code>.</p>
 <p>You will implement <code>SSTableBuilder::Append</code> and <code>SSTable::Finish</code> while maintaining the information about the SSTable: <code>index_data_</code> (the index data), <code>index_offset_</code> (the offset of the index block), <code>largest_key_</code> and <code>smallest_key_</code> (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the <code>SSTable</code> structure. You can use <code>BlockBuilder</code> to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use <code>Block</code> to store index data.</p>
 <h3 id="filewriter">FileWriter</h3>
 <p>You should use <code>FileWriter</code> to implement <code>SSTableBuilder</code>, <code>BlockBuilder</code>. It collects data and writes them to disk in batch. <code>FileWriter</code> provides two methods <code>AppendValue&lt;T&gt;</code> and <code>AppendString</code>. You can use <code>AppendValue&lt;T&gt;</code> to copy a value of type <code>T</code> to the file. <code>T</code> is a template parameter, it can be <code>uint64_t</code>, <code>float</code>, or structured data which do not have pointers, such as <code>std::pair&lt;uint64_t, uint64_t&gt;</code> and <code>BlockHandle</code>. For string data, you can use <code>AppendString</code>. Here is an example of usage:</p>
@@ -162,11 +162,11 @@ auto len = reader.ReadValue&lt;uint64_t&gt;();
 auto str = reader.ReadString(len);
 </code></pre>
 <h3 id="test_1">Test</h3>
-<p>You can test it through <code>test/test_lsm --gtest_filter=*.SSTableTest</code></p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.SSTableTest</code></p>
 <h2 id="sortedrun">SortedRun</h2>
 <p><code>SortedRun</code> stores an array of SSTables. You will implement it based on <code>SSTable</code> and <code>SSTableIterator</code>.</p>
 <h3 id="test_2">Test</h3>
-<p>You can test it through <code>test/test_lsm --gtest_filter=*.SortedRunTest</code></p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.SortedRunTest</code></p>
 <h2 id="iteratorheap">IteratorHeap</h2>
 <p>The <code>IteratorHeap</code> structure is used when performing merge-sort on multiple sorted runs. <code>IteratorHeap</code> takes references to the iterators, so you need to store the iterator in another area and pass the reference to it. The usage of <code>IteratorHeap</code> is as follows:</p>
 <ul>
@@ -183,11 +183,11 @@ auto str = reader.ReadString(len);
 <p>We recommend you to use a heap to maintain the minimum record. You can use <code>std::priority_queue</code> or implement your own.</p>
 <p>Note that <code>IteratorHeap</code> is a template class, if you are not familiar with it, you can read about templates in resources such as <a href="https://www.runoob.com/cplusplus/cpp-templates.html">link</a>. </p>
 <h3 id="test_3">Test</h3>
-<p>You can test it through <code>test/test_lsm --gtest_filter=*.IteratorHeapTest</code></p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.IteratorHeapTest</code></p>
 <h2 id="superversion">SuperVersion</h2>
 <p>After you implement <code>SortedRun</code>, <code>SortedRunIterator</code> and <code>IteratorHeap</code>, implementing <code>SuperVersion</code> should be straightforward. </p>
 <h3 id="test_4">Test</h3>
-<p>You can test it through <code>test/test_lsm --gtest_filter=*.SuperVersionTest</code></p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.SuperVersionTest</code></p>
 <h2 id="smart-pointers">Smart Pointers</h2>
 <p>We use smart pointers to manage reference counts for SSTables and sorted runs. If you are not familiar with them, you can read about smart pointers in resources such as <a href="https://learn.microsoft.com/zh-cn/cpp/cpp/smart-pointers-modern-cpp?view=msvc-170">link</a>.</p>
 <p>DO NOT delete them! We rely on reference counts to support multiversion concurrency control.</p>
