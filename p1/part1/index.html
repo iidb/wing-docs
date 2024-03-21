@@ -194,7 +194,7 @@ auto str = reader.ReadString(len);
 <h2 id="superversion">SuperVersion</h2>
 <p>After you implement <code>SortedRun</code>, <code>SortedRunIterator</code> and <code>IteratorHeap</code>, implementing <code>SuperVersion</code> should be straightforward. </p>
 <h3 id="test_4">Test</h3>
-<p>TODO</p>
+<p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.SuperVersionTest</code></p>
 <h2 id="smart-pointers">Smart Pointers</h2>
 <p>We use smart pointers to manage reference counts for SSTables and sorted runs. If you are not familiar with them, you can read about smart pointers in resources such as <a href="https://learn.microsoft.com/zh-cn/cpp/cpp/smart-pointers-modern-cpp?view=msvc-170">link</a>.</p>
 <p>DO NOT delete them! We rely on reference counts to support multiversion concurrency control.</p>
