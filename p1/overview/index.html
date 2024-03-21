@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Overview";
-        var mkdocs_page_input_path = "p1/overview.md";
+        var mkdocs_page_input_path = "p1\\overview.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -89,7 +89,7 @@
             <div class="section" itemprop="articleBody">
               
                 <h2 id="lsm-basic">LSM Basic</h2>
-<p>The architecture of the LSM-tree in Wing is as follows.</p>
+<p>The code is in <code>src/storage/lsm</code>. The architecture of the LSM-tree in Wing is as follows.</p>
 <p><img alt="" src="../lsm_pics/arch.png" /></p>
 <p><code>DBImpl</code>: At the highest level, the <code>DBImpl</code> is the primary component responsible for interacting with users. It references the most recent <code>SuperVersion</code> of the database.</p>
 <p><code>SuperVersion</code>: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree <code>Version</code>, which together represent the current state of the database.</p>
