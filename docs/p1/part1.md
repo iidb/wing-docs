@@ -69,7 +69,7 @@ auto str = reader.ReadString(len);
 
 You will build a bloom filter for each SSTable. If you are not familiar with bloom filter, you can read about it in resources such as [link](https://en.wikipedia.org/wiki/Bloom_filter). Basically, bloom filter is a bit array. For each key, it set some bits to 1. The positions of these bits are calculated using hash functions. Then, for each key, if all the corresponding bits are 1, the key may exist, otherwise it does not. 
 
-We have implemeneted a bloom filter for you, which can be found in `common/bloomfilter.hpp` and `common/bloomfilter.cpp`. `BloomFilter::Create` create a bloom filter. `BloomFilter::Add` add a key to the bloom filter. Since we only use the hash of keys, you can pass the hash to `BloomFilter::Add`. `BloomFilter::Find` checks if a key may exist in the bloom filter. It can also accept the hash of keys.
+We have implemented a bloom filter for you, which can be found in `common/bloomfilter.hpp` and `common/bloomfilter.cpp`. `BloomFilter::Create` create a bloom filter. `BloomFilter::Add` add a key to the bloom filter. Since we only use the hash of keys, you can pass the hash to `BloomFilter::Add`. `BloomFilter::Find` checks if a key may exist in the bloom filter. It can also accept the hash of keys.
 
 In `SSTableBuilder`, you should record the hashes of keys in `SSTableBuilder::Append` and use them to build a bloom filter in `SSTableBuilder::Finish`.
 
