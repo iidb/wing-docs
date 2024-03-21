@@ -18,7 +18,7 @@ In LeveledCompactionPicker::Get, you must check for the existence of a compactio
 
 ## DBImpl::CompactionJob
 
-You will implement CompactionJob::Run. It receives an iterator and writes the iterator's output to disk. You should merge the records with the same key. The output is divided into SSTables, with the size of records in each SSTable not exceeding the target SSTable size (refer to sst_file_size in lsm/options.hpp). The actual SSTable size may be larger than the target SSTable size since we have index data and metadata. 
+You will implement CompactionJob::Run. It receives an iterator and writes the iterator's output to disk. You should merge the records with the same key. The output is divided into SSTables, with the size of records in each SSTable not exceeding the target SSTable size (refer to sst_file_size in storage/lsm/options.hpp). The actual SSTable size may be larger than the target SSTable size since we have index data and metadata. 
 
 ## DBImpl::CompactionThread
 

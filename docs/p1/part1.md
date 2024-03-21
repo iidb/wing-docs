@@ -20,13 +20,13 @@ Each class contains some incomplete methods. You may add fields and methods as n
 
 where the block is divided into two parts, the first part consists of key-value pairs, while the second part is an array of offsets to the key-value pairs. 
 
-`BlockIterator` takes a pointer to the beginning of the `Block` and the `BlockHandle` of the `Block`. You can obtain useful information such as the number of key-value pairs and the size of the `Block` in `BlockHandle`. `BlockIterator::Seek(key, seq)` finds the first record larger than `(user_key, seq)` and moves to it (refer to the definition of the comparison operator in `lsm/format.hpp`). `BlockIterator::SeekToFirst` moves the iterator to the beginning. You can find the comments for `Next()`, `key()`, `value()` and `Valid()` in `lsm/iterator.hpp`.
+`BlockIterator` takes a pointer to the beginning of the `Block` and the `BlockHandle` of the `Block`. You can obtain useful information such as the number of key-value pairs and the size of the `Block` in `BlockHandle`. `BlockIterator::Seek(key, seq)` finds the first record larger than `(user_key, seq)` and moves to it (refer to the definition of the comparison operator in `storage/lsm/format.hpp`). `BlockIterator::SeekToFirst` moves the iterator to the beginning. You can find the comments for `Next()`, `key()`, `value()` and `Valid()` in `storage/lsm/iterator.hpp`.
 
-`BlockBuilder` writes key-value pairs to the block until the block reaches the capacity (refer to `block_size` in `lsm/options.hpp`). You need to ensure that the size of the block do not exceed `block_size`. The offsets of key-value pairs are written after all the key-value pairs are written and `BlockBuilder::FinishBlock` is called, so you need to record the offsets while writing the data.
+`BlockBuilder` writes key-value pairs to the block until the block reaches the capacity (refer to `block_size` in `storage/lsm/options.hpp`). You need to ensure that the size of the block do not exceed `block_size`. The offsets of key-value pairs are written after all the key-value pairs are written and `BlockBuilder::FinishBlock` is called, so you need to record the offsets while writing the data.
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=*.BlockTest`
+You can test it through `test/test_lsm --gtest_filter=LSMTest.BlockTest`
 
 ## SSTable
 
@@ -36,7 +36,7 @@ You can implement the format as follows:
 
 where data blocks are `Block`.
 
-The index consists of the last key and the `BlockHandle` of each `Block`, as defined in `IndexValue` in `lsm/format.hpp`. It is used to locate data block in `SSTable::Get`, `SSTable::Seek` and `SSTableIterator::Seek`.
+The index consists of the last key and the `BlockHandle` of each `Block`, as defined in `IndexValue` in `storage/lsm/format.hpp`. It is used to locate data block in `SSTable::Get`, `SSTable::Seek` and `SSTableIterator::Seek`.
 
 You will implement `SSTableBuilder::Append` and `SSTable::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
 
@@ -65,7 +65,7 @@ auto str = reader.ReadString(len);
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=*.SSTableTest`
+You can test it through `test/test_lsm --gtest_filter=LSMTest.SSTableTest`
 
 ## SortedRun
 
@@ -73,7 +73,7 @@ You can test it through `test/test_lsm --gtest_filter=*.SSTableTest`
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=*.SortedRunTest`
+You can test it through `test/test_lsm --gtest_filter=LSMTest.SortedRunTest`
 
 ## IteratorHeap
 
@@ -91,7 +91,7 @@ Note that `IteratorHeap` is a template class, if you are not familiar with it, y
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=*.IteratorHeapTest`
+You can test it through `test/test_lsm --gtest_filter=LSMTest.IteratorHeapTest`
 
 ## SuperVersion
 
@@ -99,7 +99,7 @@ After you implement `SortedRun`, `SortedRunIterator` and `IteratorHeap`, impleme
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=*.SuperVersionTest`
+You can test it through `test/test_lsm --gtest_filter=LSMTest.SuperVersionTest`
 
 
 ## Smart Pointers
@@ -107,3 +107,4 @@ You can test it through `test/test_lsm --gtest_filter=*.SuperVersionTest`
 We use smart pointers to manage reference counts for SSTables and sorted runs. If you are not familiar with them, you can read about smart pointers in resources such as [link](https://learn.microsoft.com/zh-cn/cpp/cpp/smart-pointers-modern-cpp?view=msvc-170).
 
 DO NOT delete them! We rely on reference counts to support multiversion concurrency control.
+

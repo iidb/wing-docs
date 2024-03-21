@@ -25,7 +25,7 @@ The architecture of the LSM-tree in Wing is as follows.
 
 Records in the database are structured as `(key, seq, type, value)` tuple, where `seq` denotes the timestamp (or sequence number) and `type` denotes the record type. A record with `type=RecordType::Value` represents the key-value pair at the timestamp `seq`. When `type` equals to `RecordType::Deletion`, the record indicates that the key has been marked for deletion at the timestamp `seq`.
 
-`(key, seq, type)` is called the internal key of record (see `lsm/format.hpp`) because `seq` and `type` are invisible to users. We can define a comparing function to sort them: for two internal keys `(key0, seq0, type0)` and `(key1, seq1, type1)`, the former is smaller than the latter if and only if `key0 < key1` or `key0 == key1 && seq0 > seq1`. With this comparing function, for `(key, seq)`, the newest record with the same key and a sequence number `seq0 <= seq` is the first record `(key0, seq0)` with `(key, seq) <= (key0, seq0)`.
+`(key, seq, type)` is called the internal key of record (see `storage/lsm/format.hpp`) because `seq` and `type` are invisible to users. We can define a comparing function to sort them: for two internal keys `(key0, seq0, type0)` and `(key1, seq1, type1)`, the former is smaller than the latter if and only if `key0 < key1` or `key0 == key1 && seq0 > seq1`. With this comparing function, for `(key, seq)`, the newest record with the same key and a sequence number `seq0 <= seq` is the first record `(key0, seq0)` with `(key, seq) <= (key0, seq0)`.
 
 ### Get
 
@@ -54,3 +54,20 @@ Scan operations are performed in a snapshot. When a `DBIterator` is created, it 
 The architecture of iterators is as follows. `BlockIterator` is the iterator on data blocks. `SSTableIterator` is the iterator on SSTables and contains a `BlockIterator`. `SortedRunIterator` is the iterator on sorted runs and contains a `SSTableIterator`. `SuperVersionIterator` is the iterator on superversions, it contains all the `SortedRunIterator`s and `MemTableIterator`s using `IteratorHeap`, which maintains the record with the minimum internal key by maintaining iterators in a heap. There is no `LevelIterator` or `VersionIterator` because it is inefficient to maintain two `IteratorHeap`s. The `DBIterator` operates at the highest level, merging records with the same key and skipping the keys which are marked deleted.
 
 ![](lsm_pics/iters.png)
+
+The interfaces of `Iterator` can be found in `storage/lsm/iterator.hpp`. Here is an example of usage:
+
+```c++
+DBIterator it = ...; // create the iterator
+while (it.Valid()) {
+  // Read key and value of the current entry
+  auto key = it.key();
+  auto value = it.value();
+  // output key and value
+  DB_INFO("{}, {}", key, value);
+  // Move to the next entry
+  it.Next();
+  // After moving, key and value may be invalid because they are `Slice`s,
+  // i.e. references to a internal buffer in `it`.
+}
+```
