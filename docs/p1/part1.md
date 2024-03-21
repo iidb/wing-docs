@@ -109,7 +109,7 @@ After you implement `SortedRun`, `SortedRunIterator` and `IteratorHeap`, impleme
 
 ### Test
 
-TODO
+You can test it through `test/test_lsm --gtest_filter=LSMTest.SuperVersionTest`
 
 
 ## Smart Pointers
