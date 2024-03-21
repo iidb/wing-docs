@@ -1,6 +1,6 @@
 ## LSM Basic
 
-The architecture of the LSM-tree in Wing is as follows.
+The code is in `src/storage/lsm`. The architecture of the LSM-tree in Wing is as follows.
 
 ![](lsm_pics/arch.png)
 

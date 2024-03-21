@@ -40,23 +40,23 @@ The index consists of the last key and the `BlockHandle` of each `Block`, as def
 
 The bloom filter is used to test whether a key may exist in the SSTable during `SSTable::Get`. It is also preloaded to the memory.
 
-You will implement `SSTableBuilder::Append` and `SSTableBuilder::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable). Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
+You will implement `SSTableBuilder::Append` and `SSTableBuilder::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `bloom_filter_offset_` (the offset of the bloom filter), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable), `key_hashes_`. Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
 
 ### FileWriter
 
-You should use `FileWriter` to implement `SSTableBuilder`, `BlockBuilder`. It collects data and writes them to disk in batch. `FileWriter` provides two methods `AppendValue<T>` and `AppendString`. You can use `AppendValue<T>` to copy a value of type `T` to the file. `T` is a template parameter, it can be `uint64_t`, `float`, or structured data which do not have pointers, such as `std::pair<uint64_t, uint64_t>` and `BlockHandle`. For string data, you can use `AppendString`. Here is an example of usage:
+You should use `FileWriter` to implement `SSTableBuilder`, `BlockBuilder`. It collects data and writes them to disk in batch. `FileWriter` provides two methods `WriteValue<T>` and `WriteString`. You can use `WriteValue<T>` to copy a value of type `T` to the file. `T` is a template parameter, it can be `uint64_t`, `float`, or structured data which do not have pointers, such as `std::pair<uint64_t, uint64_t>` and `BlockHandle`. For string data, you can use `WriteString`. Here is an example of usage:
 
 ```c++
 std::string str("114514");
-writer.AppendValue<uint64_t>(str.length());
-      .AppendString(str);
+writer.WriteValue<uint64_t>(str.length());
+      .WriteString(str);
 ```
 
 If you think the methods of `FileWriter` is difficult to use, you can modify them, but DO NOT read/write to a raw file handle in `SSTableBuilder`!
 
 ### FileReader
 
-You can use `FileReader` to read metadata and index data while initializing `SSTable`. The method `ReadValue` and `ReadString` is similar to `AppendValue` and `AppendString`. Here is an example of usage:
+You can use `FileReader` to read metadata and index data while initializing `SSTable`. The method `ReadValue` and `ReadString` is similar to `WriteValue` and `WriteString`. Here is an example of usage:
 
 ```c++
 // Read the string "114514"
@@ -109,7 +109,7 @@ After you implement `SortedRun`, `SortedRunIterator` and `IteratorHeap`, impleme
 
 ### Test
 
-You can test it through `test/test_lsm --gtest_filter=LSMTest.SuperVersionTest`
+TODO
 
 
 ## Smart Pointers
