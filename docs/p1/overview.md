@@ -4,21 +4,21 @@ The code is in `src/storage/lsm`. The architecture of the LSM-tree in Wing is as
 
 ![](lsm_pics/arch.png)
 
-`DBImpl`: At the highest level, the `DBImpl` is the primary component responsible for interacting with users. It references the most recent `SuperVersion` of the database.
+`DBImpl`: At the highest level, the `DBImpl` is the primary component responsible for interacting with users. It references the most recent `SuperVersion` of the database. It is in `lsm.hpp`.
 
-`SuperVersion`: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree `Version`, which together represent the current state of the database.
+`SuperVersion`: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree `Version`, which together represent the current state of the database. It is in `version.hpp`.
 
-`MemTable`: An in-memory ordered data structure. It is flushed to disk when it reaches its capacity.
+`MemTable`: An in-memory ordered data structure. It is flushed to disk when it reaches its capacity. It is in `memtable.hpp`.
 
-`Version`: An array of levels, representing the on-disk LSM-tree.
+`Version`: An array of levels, representing the on-disk LSM-tree. It is in `version.hpp`.
 
-`Level`: It is composed of one or more sorted runs. 
+`Level`: It is composed of one or more sorted runs. It is in `level.hpp`.
 
-`SortedRun`: It can be viewed as a sorted key-value array which is divided into several SSTables.
+`SortedRun`: It can be viewed as a sorted key-value array which is divided into several SSTables. It is in `level.hpp`.
 
-`SSTable`: It is composed of data blocks, an index, bloom filter and metadata.
+`SSTable`: It is composed of data blocks, an index, bloom filter and metadata. It is in `sst.hpp`.
 
-`Block`: It stores records.
+`Block`: It stores records. It is in `block.hpp`.
 
 
 ### Record Format

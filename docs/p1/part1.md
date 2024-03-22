@@ -24,6 +24,8 @@ where the block is divided into two parts, the first part consists of key-value 
 
 `BlockBuilder` writes key-value pairs to the block until the block reaches the capacity (refer to `block_size` in `storage/lsm/options.hpp`). You need to ensure that the size of the block do not exceed `block_size`. The offsets of key-value pairs are written after all the key-value pairs are written and `BlockBuilder::FinishBlock` is called, so you need to record the offsets while writing the data.
 
+The code is in `block.hpp` and `block.cpp`.
+
 ### Test
 
 You can test it through `test/test_lsm --gtest_filter=LSMTest.BlockTest`
@@ -41,6 +43,8 @@ The index consists of the last key and the `BlockHandle` of each `Block`, as def
 The bloom filter is used to test whether a key may exist in the SSTable during `SSTable::Get`. It is also preloaded to the memory.
 
 You will implement `SSTableBuilder::Append` and `SSTableBuilder::Finish` while maintaining the information about the SSTable: `index_data_` (the index data), `index_offset_` (the offset of the index block), `bloom_filter_offset_` (the offset of the bloom filter), `largest_key_` and `smallest_key_` (which represent the key range of the SSTable), `key_hashes_`. Once a SSTable is created, the information of the SSTable is transferred to the `SSTable` structure. You can use `BlockBuilder` to build data blocks. After writing all the key-value pairs, you can write the index data and the metadata to the file. Since we assume that we preload the index data when we open the SSTable, there is no need to use `Block` to store index data.
+
+The code is in `sst.cpp` and `sst.hpp`.
 
 ### FileWriter
 
@@ -79,7 +83,7 @@ You can test it through `test/test_lsm --gtest_filter=LSMTest.SSTableTest`
 
 ## SortedRun
 
-`SortedRun` stores an array of SSTables. You will implement it based on `SSTable` and `SSTableIterator`.
+`SortedRun` stores an array of SSTables. You will implement it based on `SSTable` and `SSTableIterator`. The code is in `level.cpp` and `level.hpp`.
 
 ### Test
 
@@ -95,7 +99,7 @@ The `IteratorHeap` structure is used when performing merge-sort on multiple sort
 
 * Then, you can use `Next`, `key`, `value`, `Valid` as an ordinary iterator. It returns the minimum record each time and call `Next` on the corresponding iterator.
 
-We recommend you to use a heap to maintain the minimum record. You can use `std::priority_queue` or implement your own.
+We recommend you to use a heap to maintain the minimum record. You can use `std::priority_queue` or implement your own. The code is in `iterator_heap.hpp`.
 
 Note that `IteratorHeap` is a template class, if you are not familiar with it, you can read about templates in resources such as [link](https://www.runoob.com/cplusplus/cpp-templates.html). 
 
@@ -105,7 +109,7 @@ You can test it through `test/test_lsm --gtest_filter=LSMTest.IteratorHeapTest`
 
 ## SuperVersion
 
-After you implement `SortedRun`, `SortedRunIterator` and `IteratorHeap`, implementing `SuperVersion` should be straightforward. 
+After you implement `SortedRun`, `SortedRunIterator` and `IteratorHeap`, implementing `SuperVersion` should be straightforward. The code is in `version.cpp` and `version.hpp`.
 
 ### Test
 
