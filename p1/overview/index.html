@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Overview";
-        var mkdocs_page_input_path = "p1\\overview.md";
+        var mkdocs_page_input_path = "p1/overview.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -89,16 +89,16 @@
             <div class="section" itemprop="articleBody">
               
                 <h2 id="lsm-basic">LSM Basic</h2>
-<p>The code is in <code>src/storage/lsm</code>. The architecture of the LSM-tree in Wing is as follows.</p>
+<p>The architecture of the LSM-tree in Wing is as follows.</p>
 <p><img alt="" src="../lsm_pics/arch.png" /></p>
-<p><code>DBImpl</code>: At the highest level, the <code>DBImpl</code> is the primary component responsible for interacting with users. It references the most recent <code>SuperVersion</code> of the database. It is in <code>lsm.hpp</code>.</p>
-<p><code>SuperVersion</code>: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree <code>Version</code>, which together represent the current state of the database. It is in <code>version.hpp</code>.</p>
-<p><code>MemTable</code>: An in-memory ordered data structure. It is flushed to disk when it reaches its capacity. It is in <code>memtable.hpp</code>.</p>
-<p><code>Version</code>: An array of levels, representing the on-disk LSM-tree. It is in <code>version.hpp</code>.</p>
-<p><code>Level</code>: It is composed of one or more sorted runs. It is in <code>level.hpp</code>.</p>
-<p><code>SortedRun</code>: It can be viewed as a sorted key-value array which is divided into several SSTables. It is in <code>level.hpp</code>.</p>
-<p><code>SSTable</code>: It is composed of data blocks, an index, bloom filter and metadata. It is in <code>sst.hpp</code>.</p>
-<p><code>Block</code>: It stores records. It is in <code>block.hpp</code>.</p>
+<p><code>DBImpl</code>: At the highest level, the <code>DBImpl</code> is the primary component responsible for interacting with users. It references the most recent <code>SuperVersion</code> of the database.</p>
+<p><code>SuperVersion</code>: It includes a MemTable, a list of immutable MemTables and the on-disk LSM-tree <code>Version</code>, which together represent the current state of the database.</p>
+<p><code>MemTable</code>: An in-memory ordered data structure. It is flushed to disk when it reaches its capacity.</p>
+<p><code>Version</code>: An array of levels, representing the on-disk LSM-tree.</p>
+<p><code>Level</code>: It is composed of one or more sorted runs. </p>
+<p><code>SortedRun</code>: It can be viewed as a sorted key-value array which is divided into several SSTables.</p>
+<p><code>SSTable</code>: It is composed of data blocks, an index, bloom filter and metadata.</p>
+<p><code>Block</code>: It stores records.</p>
 <h3 id="record-format">Record Format</h3>
 <p>Records in the database are structured as <code>(key, seq, type, value)</code> tuple, where <code>seq</code> denotes the timestamp (or sequence number) and <code>type</code> denotes the record type. A record with <code>type=RecordType::Value</code> represents the key-value pair at the timestamp <code>seq</code>. When <code>type</code> equals to <code>RecordType::Deletion</code>, the record indicates that the key has been marked for deletion at the timestamp <code>seq</code>.</p>
 <p><code>(key, seq, type)</code> is called the internal key of record (see <code>storage/lsm/format.hpp</code>) because <code>seq</code> and <code>type</code> are invisible to users. We can define a comparing function to sort them: for two internal keys <code>(key0, seq0, type0)</code> and <code>(key1, seq1, type1)</code>, the former is smaller than the latter if and only if <code>key0 &lt; key1</code> or <code>key0 == key1 &amp;&amp; seq0 &gt; seq1</code>. With this comparing function, for <code>(key, seq)</code>, the newest record with the same key and a sequence number <code>seq0 &lt;= seq</code> is the first record <code>(key0, seq0)</code> with <code>(key, seq) &lt;= (key0, seq0)</code>.</p>
