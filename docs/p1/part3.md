@@ -24,11 +24,11 @@ To simplify the analysis of the cost of range scan, we do not consider range fil
 
 Then we analysis the write amplification. Level $1$ to Level $L-1$ uses the tiering compaction policy, therefore each level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, in which $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification $w(\vec k, C) = L - 1 + C$, in which $L-1$ is the length of $\vec k$.
 
-Note that $C$ is originally an argument of the compaction policy in the paper of LSM-bush [2] and requires dynamic level sizes to maintain the size ratios between levels. However, it introduces additional code complexity. Therefore, we don't make $C$ an argument of the compaction policy. Instead, we control the total data size $N = \prod_{i=1}^{L-1} \vec k C F$, in which $F$ is the write buffer size, so that the size ratio of the last level is $C$.
+Note that $C$ is originally an argument of the compaction policy in the paper of LSM-bush [2] and requires dynamic level sizes to maintain the size ratios between levels. However, it introduces additional code complexity. Therefore, we don't make $C$ an argument of the compaction policy. Instead, we control the total data size $N = \prod_{i=1}^{L-1} k_i C F$, in which $F$ is the write buffer size, so that the size ratio of the last level is $C$.
 
 We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
-Your task: given $a, N, F$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} \vec k C F$.
+Your task: given $a, N, F$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
 
 You should verify your solution via experiments. You can choose $N, F$ you want in your experiments.
 
