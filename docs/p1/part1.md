@@ -122,3 +122,7 @@ We use smart pointers to manage reference counts for SSTables and sorted runs. I
 
 DO NOT delete them! We rely on reference counts to support multiversion concurrency control.
 
+## Submit
+
+`make submit` in the build directory to create `submission.zip` and submit it to autolab.
+
