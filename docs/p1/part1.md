@@ -22,7 +22,7 @@ where the block is divided into two parts, the first part consists of key-value 
 
 `BlockIterator` takes a pointer to the beginning of the `Block` (which is stored in a buffer) and the `BlockHandle` of the `Block`. You can obtain useful information such as the number of key-value pairs and the size of the `Block` in `BlockHandle`. `BlockIterator::Seek(user_key, seq)` finds the first record larger than `(user_key, seq)` and moves to it (refer to the definition of the comparison operator in `storage/lsm/format.hpp`). `BlockIterator::SeekToFirst` moves the iterator to the beginning. You can find the comments for `Next()`, `key()`, `value()` and `Valid()` in `storage/lsm/iterator.hpp`.
 
-`BlockBuilder` writes key-value pairs to the block until the block reaches the capacity (refer to `block_size` in `storage/lsm/options.hpp`). You need to ensure that the size of the block do not exceed `block_size`. The offsets of key-value pairs are written after all the key-value pairs are written and `BlockBuilder::FinishBlock` is called, so you need to record the offsets while writing the data.
+`BlockBuilder` writes key-value pairs to the block until the block reaches the capacity (refer to `block_size` in `storage/lsm/options.hpp`, this parameter is passed in the constructor of `BlockBuilder`). `BlockBuilder::Append` returns false if the block is full. You need to ensure that the size of the block do not exceed `block_size`. The offsets of key-value pairs are written after all the key-value pairs are written and `BlockBuilder::FinishBlock` is called, so you need to record the offsets while writing the data.
 
 The code is in `block.hpp` and `block.cpp`.
 
@@ -48,7 +48,7 @@ The code is in `sst.cpp` and `sst.hpp`.
 
 ### FileWriter
 
-You should use `FileWriter` to implement `SSTableBuilder`, `BlockBuilder`. It collects data and writes them to disk in batch. `FileWriter` provides two methods `WriteValue<T>` and `WriteString`. You can use `WriteValue<T>` to copy a value of type `T` to the file. `T` is a template parameter, it can be `uint64_t`, `float`, or structured data which do not have pointers, such as `std::pair<uint64_t, uint64_t>` and `BlockHandle`. For string data, you can use `WriteString`. Here is an example of usage:
+You should use `FileWriter` to implement `SSTableBuilder`, `BlockBuilder`. It collects data and writes them to disk in batch. `FileWriter` provides two methods `WriteValue<T>` and `WriteString`. You can use `WriteValue<T>` to copy a value of type `T` to the file. `T` is a template parameter, it can be `uint64_t`, `float`, or structured data which do not have pointers, such as `std::pair<uint64_t, uint64_t>` and `BlockHandle`. For string data, you can use `WriteString`. It only writes the string data, for example, if the string is `abc`, then it writes 3 bytes `a`, `b` and `c`. Here is an example of usage:
 
 ```c++
 std::string str("114514");
