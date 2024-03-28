@@ -51,6 +51,8 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#block">Block</a>
         <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#slice">Slice</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#test">Test</a>
     </li>
         </ul>
@@ -144,6 +146,8 @@
 <p><code>BlockIterator</code> takes a pointer to the beginning of the <code>Block</code> (which is stored in a buffer) and the <code>BlockHandle</code> of the <code>Block</code>. You can obtain useful information such as the number of key-value pairs and the size of the <code>Block</code> in <code>BlockHandle</code>. <code>BlockIterator::Seek(user_key, seq)</code> finds the first record larger than <code>(user_key, seq)</code> and moves to it (refer to the definition of the comparison operator in <code>storage/lsm/format.hpp</code>). <code>BlockIterator::SeekToFirst</code> moves the iterator to the beginning. You can find the comments for <code>Next()</code>, <code>key()</code>, <code>value()</code> and <code>Valid()</code> in <code>storage/lsm/iterator.hpp</code>.</p>
 <p><code>BlockBuilder</code> writes key-value pairs to the block until the block reaches the capacity (refer to <code>block_size</code> in <code>storage/lsm/options.hpp</code>, this parameter is passed in the constructor of <code>BlockBuilder</code>). <code>BlockBuilder::Append</code> returns false if the block is full. You need to ensure that the size of the block do not exceed <code>block_size</code>. The offsets of key-value pairs are written after all the key-value pairs are written and <code>BlockBuilder::FinishBlock</code> is called, so you need to record the offsets while writing the data.</p>
 <p>The code is in <code>block.hpp</code> and <code>block.cpp</code>.</p>
+<h3 id="slice">Slice</h3>
+<p>Note that <code>`Slice</code> is equivalent to <code>std::string_view</code>(C++17), which is a reference to a string. It does not allocate a <code>std::string</code>. You need to ensure that the referenced string is not incorrectly deallocated or modified.</p>
 <h3 id="test">Test</h3>
 <p>You can test it through <code>test/test_lsm --gtest_filter=LSMTest.BlockTest</code></p>
 <h2 id="sstable">SSTable</h2>
@@ -160,6 +164,7 @@
 writer.WriteValue&lt;uint64_t&gt;(str.length());
       .WriteString(str);
 </code></pre>
+<p>Note that you should call <code>FileWriter::Flush</code> when all things have been written.</p>
 <p>If you think the methods of <code>FileWriter</code> is difficult to use, you can modify them, but DO NOT read/write to a raw file handle in <code>SSTableBuilder</code>!</p>
 <h3 id="filereader">FileReader</h3>
 <p>You can use <code>FileReader</code> to read metadata and index data while initializing <code>SSTable</code>. The method <code>ReadValue</code> and <code>ReadString</code> is similar to <code>WriteValue</code> and <code>WriteString</code>. Here is an example of usage:</p>
