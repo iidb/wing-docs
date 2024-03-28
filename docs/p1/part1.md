@@ -26,6 +26,10 @@ where the block is divided into two parts, the first part consists of key-value 
 
 The code is in `block.hpp` and `block.cpp`.
 
+### Slice
+
+Note that ``Slice` is equivalent to `std::string_view`(C++17), which is a reference to a string. It does not allocate a `std::string`. You need to ensure that the referenced string is not incorrectly deallocated or modified.
+
 ### Test
 
 You can test it through `test/test_lsm --gtest_filter=LSMTest.BlockTest`
@@ -55,6 +59,8 @@ std::string str("114514");
 writer.WriteValue<uint64_t>(str.length());
       .WriteString(str);
 ```
+
+Note that you should call `FileWriter::Flush` when all things have been written.
 
 If you think the methods of `FileWriter` is difficult to use, you can modify them, but DO NOT read/write to a raw file handle in `SSTableBuilder`!
 
