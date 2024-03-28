@@ -18,7 +18,7 @@ Each class contains some incomplete methods. You may add fields and methods as n
 
 ![](lsm_pics/data_block_format.png)
 
-where the block is divided into two parts, the first part consists of key-value pairs, while the second part is an array of offsets to the key-value pairs. 
+where the block is divided into two parts, the first part consists of key-value pairs, while the second part is an array of offsets to the key-value pairs. The key length and value length should be stored in 4 bytes (refer to `offset_t` in `lsm/common.hpp`) or less.
 
 `BlockIterator` takes a pointer to the beginning of the `Block` (which is stored in a buffer) and the `BlockHandle` of the `Block`. You can obtain useful information such as the number of key-value pairs and the size of the `Block` in `BlockHandle`. `BlockIterator::Seek(user_key, seq)` finds the first record larger than `(user_key, seq)` and moves to it (refer to the definition of the comparison operator in `storage/lsm/format.hpp`). `BlockIterator::SeekToFirst` moves the iterator to the beginning. You can find the comments for `Next()`, `key()`, `value()` and `Valid()` in `storage/lsm/iterator.hpp`.
 
