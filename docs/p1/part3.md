@@ -38,6 +38,8 @@ If you can't get the optimal solution, you can still get some points by proposin
 
 Range filters can tell whether keys exist within a specified range in a sorted run. This allows range scans to bypass sorted runs without relevant keys, optimizing query performance. We still consider the range scan cost $r$ as the number of sorted runs it reads in this problem. However, since some sorted runs may be skipped, the range scan cost $r \le 1 + \sum_{i=1}^{L-1} k_i$
 
+For example, if the range scan length is $m$, then the expected number of records to read (i.e., expected scan length) in the last level (i.e., Level $L$) is $m$. Since the size of Level $L-1$ is $\frac{1}{C}$ of the size of Level $L$, and there are $k_{L-1}$ sorted runs in Level $L-1$, the size of each sorted run in Level $L-1$ is $\frac{1}{C k_{L-1}}$ of the size of Level $L$. Therefore, the expected scan length in each sorted run of Level $L-1$ is $\frac{m}{C k_{L-1}}$. Similarly, the expected scan length in each sorted run of Level $L-2$ is $\frac{m}{C k_{L-1} k_{L-2}}$. To simplify the model, if the expected scan length $s$ of a sorted run $\ge 1$, then we think that the sorted run must be read, and it contributes $1$ to the range scan cost $r$. If $s < 1$, then there is a probability of $1-s$ that the sorted run does not contain keys in the scan range and we don't need to read it, therefore the sorted run contributes $s$ to the range scan cost $r$.
+
 To simplify the model, we don't consider the memory consumption of range filters, and we regard the false positive rate of range filters as zero.
 
 Your task: given $a, N, F$, and the range scan length $m$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
