@@ -16,11 +16,11 @@ Your tasks are as follows:
 2. Configure the LSM-tree to use the lazy leveling compaction policy and the leveling compaction policy through the compaction policy API, and then measure their write amplifications.
 3. Calcuate the theoritical write amplifications. Compare them with the measured ones.
 
-## Problem 2: find the best compaction policy (6pts)
+## Problem 2: find the best compaction policy without considering range filters (3pts)
 
 Although the lazy leveling policy has a smaller write amplification than the leveling policy, it increases the number of sorted runs and harms the performance of range scan.
 
-To simplify the analysis of the cost of range scan, we do not consider range filters. Therefore, each range scan will read every sorted run. We also don't consider the sequential read cost in the range scan. Therefore, each sorted run contributes equally to the range scan cost, and we can consider that the range scan cost is the number of sorted runs. We denote the range scan cost as $r(\vec k)$, then $r(\vec k) = 1 + \sum_{i=1}^{L-1} k_i$.
+To simplify the analysis of the cost of range scan, we do not consider range filters here. Therefore, each range scan will read every sorted run. We also don't consider the sequential read cost in the range scan. Therefore, each sorted run contributes equally to the range scan cost, and we can consider that the range scan cost is the number of sorted runs. We denote the range scan cost as $r(\vec k)$, then $r(\vec k) = 1 + \sum_{i=1}^{L-1} k_i$.
 
 Then we analysis the write amplification. Level $1$ to Level $L-1$ uses the tiering compaction policy, therefore each level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, in which $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification $w(\vec k, C) = L - 1 + C$, in which $L-1$ is the length of $\vec k$.
 
@@ -29,6 +29,18 @@ Note that $C$ is originally an argument of the compaction policy in the paper of
 We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
 Your task: given $a, N, F$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
+
+You should verify your solution via experiments. You can choose $N, F$ you want in your experiments.
+
+If you can't get the optimal solution, you can still get some points by proposing several reasonable solutions and evaluating them.
+
+## Problem 3: find the best compaction policy considering range filters (3pts)
+
+Range filters can tell whether keys exists within a specified range in a sorted run. This allows range scans to bypass sorted runs without relavant keys, optimizing query performance. We still consider the range scan cost $r$ as the sorted runs it reads in this problem. However, since some sorted runs may be skipped, the range scan cost $r \le 1 + \sum_{i=1}^{L-1} k_i$
+
+To simplify the model, we don't consider the memory consumption of range filters, and we regard the false positive rate of ranges filters as zero.
+
+Your task: given $a, N, F$, and the range scan length $m$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
 
 You should verify your solution via experiments. You can choose $N, F$ you want in your experiments.
 
