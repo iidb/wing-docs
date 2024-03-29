@@ -36,7 +36,7 @@ If you can't get the optimal solution, you can still get some points by proposin
 
 ## Problem 3: find the best compaction policy considering range filters (3pts)
 
-Range filters can tell whether keys exists within a specified range in a sorted run. This allows range scans to bypass sorted runs without relavant keys, optimizing query performance. We still consider the range scan cost $r$ as the sorted runs it reads in this problem. However, since some sorted runs may be skipped, the range scan cost $r \le 1 + \sum_{i=1}^{L-1} k_i$
+Range filters can tell whether keys exists within a specified range in a sorted run. This allows range scans to bypass sorted runs without relavant keys, optimizing query performance. We still consider the range scan cost $r$ as the number of sorted runs it reads in this problem. However, since some sorted runs may be skipped, the range scan cost $r \le 1 + \sum_{i=1}^{L-1} k_i$
 
 To simplify the model, we don't consider the memory consumption of range filters, and we regard the false positive rate of ranges filters as zero.
 
