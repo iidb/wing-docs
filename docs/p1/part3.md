@@ -42,7 +42,7 @@ To simplify the model, we don't consider the memory consumption of range filters
 
 Your task: given $a, N, F$, and the range scan length $m$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
 
-You should verify your solution via experiments. You can choose $N, F$ you want in your experiments.
+You should verify your solution via experiments. You can implement a fake range filter by reading the sorted run and checking whether keys exist in the range without counting the I/O into costs. You can choose $N, F$ you want in your experiments.
 
 If you can't get the optimal solution, you can still get some points by proposing several reasonable solutions and evaluating them.
 
