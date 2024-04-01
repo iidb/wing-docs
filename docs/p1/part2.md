@@ -9,6 +9,8 @@ In part 2, you will implement compaction mechanism. You will implement:
 
 * `DBImpl::CompactionThread`. This thread manages the compaction process and updates the superversion. You may refer to the implementation of `DBImpl::FlushThread` for guidance.
 
+You may need to use `ulimit` to increase the number of open file descriptors. (by default it is 1024, which is not enough).
+
 ## DBImpl::CompactionJob
 
 You will implement CompactionJob::Run. It receives an iterator and writes the iterator's output to disk. You should merge the records with the same key. The output is divided into SSTables, with the size of data blocks in SSTable not exceeding the target SSTable size (refer to `sst_file_size` in `storage/lsm/options.hpp`). The actual SSTable size may be larger than the target SSTable size since we have index data, bloom filter and metadata. 
@@ -58,7 +60,7 @@ In LSM-tree, `Put` operations do not block `Get`/`Scan` (implemented by `DBItera
 
 You will implement `DBImpl::CompactionThread`.
 
-The compaction thread awaits signals from the flush thread or the deconstructor via the condition variable compact_cv_. Upon being awakened, it first checks `stop_signal_`. If `stop_signal_` is true, it stops immediately. Otherwise, it calls `CompactionPicker::Get` to obtain a compaction task. If a task is present, it executes the compaction outside of the DB mutex. After compaction, it reacquires the DB mutex, creates a new superversion, and updates the DBImpl superversion. You can assume that the number of SSTables is small, allowing you to iterate through each SSTable and copy their pointers to the new superversion. You also need to set `compaction_flag_` to true if you are not waiting for `compact_cv_`, like `flush_flag_` in `DBImpl::FlushThread`. 
+The compaction thread awaits signals from the flush thread or the deconstructor via the condition variable `compact_cv_`. Upon being awakened, it first checks `stop_signal_`. If `stop_signal_` is true, it stops immediately. Otherwise, it calls `CompactionPicker::Get` to obtain a compaction task. If a task is present, it executes the compaction outside of the DB mutex. After compaction, it reacquires the DB mutex, creates a new superversion, and updates the DBImpl superversion. You can assume that the number of SSTables is small, allowing you to iterate through each SSTable and copy their pointers to the new superversion. You also need to set `compaction_flag_` to true if you are not waiting for `compact_cv_`, like `flush_flag_` in `DBImpl::FlushThread`. 
 
 More specifically, you need to write something like:
 
@@ -72,7 +74,7 @@ void DBImpl::CompactionThread() {
       compact_flag_ = false;
       return;
     }
-    std::unique_ptr<Compaction> compaction = /* A new compaction job */
+    std::unique_ptr<Compaction> compaction = /* A new compaction task */
     if (!compaction) {
       compact_flag_ = false;
       compact_cv_.wait(lck);
