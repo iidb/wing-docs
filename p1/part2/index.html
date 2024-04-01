@@ -117,6 +117,7 @@
 <p><code>DBImpl::CompactionThread</code>. This thread manages the compaction process and updates the superversion. You may refer to the implementation of <code>DBImpl::FlushThread</code> for guidance.</p>
 </li>
 </ul>
+<p>You may need to use <code>ulimit</code> to increase the number of open file descriptors. (by default it is 1024, which is not enough).</p>
 <h2 id="dbimplcompactionjob">DBImpl::CompactionJob</h2>
 <p>You will implement CompactionJob::Run. It receives an iterator and writes the iterator's output to disk. You should merge the records with the same key. The output is divided into SSTables, with the size of data blocks in SSTable not exceeding the target SSTable size (refer to <code>sst_file_size</code> in <code>storage/lsm/options.hpp</code>). The actual SSTable size may be larger than the target SSTable size since we have index data, bloom filter and metadata. </p>
 <p>The code is in <code>compaction_job.hpp</code>.</p>
