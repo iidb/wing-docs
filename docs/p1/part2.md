@@ -100,6 +100,6 @@ Utilize SetRemoveTag to set the `remove_tag_` to true. When the destructor of SS
 
 ### Test
 
-You can test all the components through `test/test_lsm --gtest_filter=LSMTest.LSMBasicTest:LSMTest.LSMSmallGetTest:LSMTest.LSMSmallScanTest:LSMTest.LSMSmallMultithreadGetPutTest:LSMTest.LSMSaveTest:LSMTest.LSMBigScanTest:LSMTest.LeveledCompactionTest`
+You can test all the components through `test/test_lsm --gtest_filter=LSMTest.LSMBasicTest:LSMTest.LSMSmallGetTest:LSMTest.LSMSmallScanTest:LSMTest.LSMSmallMultithreadGetPutTest:LSMTest.LSMSaveTest:LSMTest.LSMBigScanTest:LSMDuplicateKeyTest:LSMTest.LeveledCompactionTest`
 
 or, you can just use `test/test_lsm --gtest_filter=LSMTest.LSM*:LSMTest.LeveledCompactionTest`
