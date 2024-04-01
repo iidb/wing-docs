@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Part 2";
-        var mkdocs_page_input_path = "p1\\part2.md";
+        var mkdocs_page_input_path = "p1/part2.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -173,7 +173,7 @@
 <h3 id="remove-old-sstables">Remove old SSTables</h3>
 <p>Utilize SetRemoveTag to set the <code>remove_tag_</code> to true. When the destructor of SSTable is invoked, it checks the tag and determines whether to remove the file. This is safe as the destructor is called only when the SSTable is not in use.</p>
 <h3 id="test_1">Test</h3>
-<p>You can test all the components through <code>test/test_lsm --gtest_filter=LSMTest.LSMBasicTest:LSMTest.LSMSmallGetTest:LSMTest.LSMSmallScanTest:LSMTest.LSMSmallMultithreadGetPutTest:LSMTest.LSMSaveTest:LSMTest.LSMBigScanTest:LSMDuplicateKeyTest:LSMTest.LeveledCompactionTest</code></p>
+<p>You can test all the components through <code>test/test_lsm --gtest_filter=LSMTest.LSMBasicTest:LSMTest.LSMSmallGetTest:LSMTest.LSMSmallScanTest:LSMTest.LSMSmallMultithreadGetPutTest:LSMTest.LSMSaveTest:LSMTest.LSMBigScanTest:LSMTest.LSMDuplicateKeyTest:LSMTest.LeveledCompactionTest</code></p>
 <p>or, you can just use <code>test/test_lsm --gtest_filter=LSMTest.LSM*:LSMTest.LeveledCompactionTest</code></p>
               
             </div>
