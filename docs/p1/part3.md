@@ -13,8 +13,8 @@ Dostoevsky [1] proposes lazy leveling, in which there is only one sorted run in 
 Your tasks are as follows:
 
 1. Implement the compaction policy API. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in each level. The arguments are $k_1, k_2, \cdots, k_{L-1}$, in which $k_i$ stands for the number of sorted runs in Level $i$.
-2. Configure the LSM-tree to use the lazy leveling compaction policy and the leveling compaction policy through the compaction policy API, and then measure their write amplifications.
-3. Calculate the theoretical write amplifications. Compare them with the measured ones.
+2. Configure the LSM-tree to use the lazy leveling compaction policy and the tiering compaction policy through the compaction policy API, and then measure their write amplifications.
+3. Calculate the theoretical write amplifications of lazy leveling and tiering. Compare them with the measured ones.
 
 ## Problem 2: find the best compaction policy without considering range filters (3pts)
 
