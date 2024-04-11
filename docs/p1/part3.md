@@ -8,12 +8,12 @@ Tiering is another compaction policy: there are at most $T$ sorted runs in each 
 
 However, the tiering policy suffers from high space amplification. There are $T$ sorted runs in the last level, and they may all contain the same set of keys. Therefore, in the worst case, as much as $\frac{T-1}{T}$ of the LSM-tree data are stale data, and only $\frac{1}{T}$ are latest data, i.e., the space amplification of the tiering policy can be larger than $T$ in the worst case, which is unacceptable.
 
-Dostoevsky [1] proposes lazy leveling, in which there is only one sorted run in the last level to limit the space amplification and $T$ sorted runs in other levels to reduce the write amplification.
+Lazy leveling limits the space amplification by allowing only one sorted run in the last level. Lazy leveling allows $T$ sorted runs in other levels to reduce the write amplification.
 
 Your tasks are as follows:
 
-1. Implement lazy leveling. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in Level $1$ to Level $L-1$. The arguments are $k_1, k_2, \cdots, k_{L-1}$, in which $k_i$ stands for the number of sorted runs in Level $i$.
-2. Measure the write amplification in the test `TODO`. Calculate the theoretical write amplifications and ompare it with the measured one.
+1. Implement lazy leveling. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in Level $1$ to Level $L-1$. The arguments are $k_1, k_2, \cdots, k_{L-1}, C$, in which $k_i$ stands for the number of sorted runs in Level $i$, and $C$ stands for the size ratio between Level $L$ and Level $L-1$. Note that you should determine the sizes of each level by the size of the last level. For example, if the size of the last level is $N$, the size of Level $L-1$ should be $\frac{N}{C}$, and the size of Level $L-2$ should be $\frac{N}{C k_{L-1}}$.
+2. Measure the write amplification in the test `TODO`. Calculate the theoretical write amplification and compare it with the measured one.
 
 ## Problem 2: find the best compaction policy (3pts)
 
@@ -21,32 +21,22 @@ Range scan is a query type that retrieves all records in the given range. To sca
 
 Then we analyze the write amplification. Level $1$ to Level $L-1$ uses the tiering compaction policy, therefore each level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, in which $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification $w(\vec k, C) = L - 1 + C$, in which $L-1$ is the length of $\vec k$.
 
-Note that $C$ is originally an argument of the compaction policy in the paper of LSM-bush [2] and requires dynamic level sizes to maintain the size ratios between levels. However, it introduces additional code complexity. Therefore, we don't make $C$ an argument of the compaction policy. Instead, we control the total data size $N = \prod_{i=1}^{L-1} k_i C F$, in which $F$ is the write buffer size, so that the size ratio of the last level is $C$.
-
 We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
-Your task: given $a, N, F$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
+Your task: given $a, N, F$, in which $N$ is the size of the last level, $F$ is the write buffer size, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$.
 
-You should verify your solution via experiments. You can choose $N, F$ you want in your experiments.
+You should verify your solution via experiments.
 
-If you can't get the optimal solution, you can still get some points by proposing several reasonable solutions and evaluating them.
+You can get points as long as your solution is reasonable and well-founded.
 
 ## Problem 3: find the best compaction policy considering range filters (3pts)
 
 Range filters can tell whether keys exist within a specified range in a sorted run. This allows range scans to bypass sorted runs without relevant keys, optimizing query performance. We still consider the range scan cost $r$ as the number of sorted runs it reads in this problem. However, since some sorted runs may be skipped, the range scan cost $r \le 1 + \sum_{i=1}^{L-1} k_i$
 
-For example, if the range scan length is $m$, then the expected number of records to read (i.e., expected scan length) in the last level (i.e., Level $L$) is $m$. Since the size of Level $L-1$ is $\frac{1}{C}$ of the size of Level $L$, and there are $k_{L-1}$ sorted runs in Level $L-1$, the size of each sorted run in Level $L-1$ is $\frac{1}{C k_{L-1}}$ of the size of Level $L$. Therefore, the expected scan length in each sorted run of Level $L-1$ is $\frac{m}{C k_{L-1}}$. Similarly, the expected scan length in each sorted run of Level $L-2$ is $\frac{m}{C k_{L-1} k_{L-2}}$. To simplify the model, if the expected scan length $s$ of a sorted run $\ge 1$, then we think that the sorted run must be read, and it contributes $1$ to the range scan cost $r$. If $s < 1$, then there is a probability of $1-s$ that the sorted run does not contain keys in the scan range and we don't need to read it, therefore the sorted run contributes $s$ to the range scan cost $r$.
+We denote the range scan length as $m$, then the expected number of records to read (i.e., expected scan length) in the last level (i.e., Level $L$) is $m$. Since the size of Level $L-1$ is $\frac{1}{C}$ of the size of Level $L$, and there are $k_{L-1}$ sorted runs in Level $L-1$, the size of each sorted run in Level $L-1$ is $\frac{1}{C k_{L-1}}$ of the size of Level $L$. Therefore, the expected scan length in each sorted run of Level $L-1$ is $\frac{m}{C k_{L-1}}$. Similarly, the expected scan length in each sorted run of Level $L-2$ is $\frac{m}{C k_{L-1} k_{L-2}}$. To simplify the model, if the expected scan length $s$ of a sorted run $\ge 1$, then we think that the sorted run must be read, and it contributes $1$ to the range scan cost $r$. If $s < 1$, then there is a probability of $1-s$ that the sorted run does not contain keys in the scan range and we don't need to read it, therefore the sorted run contributes $s$ to the range scan cost $r$.
 
-To simplify the model, we don't consider the memory consumption of range filters, and we regard the false positive rate of range filters as zero.
+Your task: given $a, N, F$, and the range scan length $m$, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$. The total write amplification $w(\vec k, C) = L - 1 + C$. The range scan cost $r(\vec k)$ is what you need to solve.
 
-Your task: given $a, N, F$, and the range scan length $m$, find $\vec k, C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
+You should verify your solution via test $TODO$.
 
-You should verify your solution via experiments. You can implement a fake range filter by reading the sorted run and checking whether keys exist in the range without counting the I/O into costs. You can choose $N, F$ you want in your experiments.
-
-If you can't get the optimal solution, you can still get some points by proposing several reasonable solutions and evaluating them.
-
-## References
-
-[1] Dostoevsky: Better Space-Time Trade-Offs for LSM-Tree Based Key-Value Stores via Adaptive Removal of Superfluous Merging. <https://dl.acm.org/doi/pdf/10.1145/3183713.3196927>
-
-[2] The Log-Structured Merge-Bush & the Wacky Continuum. <https://dl.acm.org/doi/pdf/10.1145/3299869.3319903>
+You can get points as long as your solution is reasonable and well-founded.
