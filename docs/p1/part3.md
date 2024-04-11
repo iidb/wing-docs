@@ -12,15 +12,12 @@ Dostoevsky [1] proposes lazy leveling, in which there is only one sorted run in 
 
 Your tasks are as follows:
 
-1. Implement the compaction policy API. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in each level. The arguments are $k_1, k_2, \cdots, k_{L-1}$, in which $k_i$ stands for the number of sorted runs in Level $i$.
-2. Configure the LSM-tree to use the lazy leveling compaction policy and the tiering compaction policy through the compaction policy API, and then measure their write amplifications.
-3. Calculate the theoretical write amplifications of lazy leveling and tiering. Compare them with the measured ones.
+1. Implement lazy leveling. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in Level $1$ to Level $L-1$. The arguments are $k_1, k_2, \cdots, k_{L-1}$, in which $k_i$ stands for the number of sorted runs in Level $i$.
+2. Measure the write amplification in the test `TODO`. Calculate the theoretical write amplifications and ompare it with the measured one.
 
-## Problem 2: find the best compaction policy without considering range filters (3pts)
+## Problem 2: find the best compaction policy (3pts)
 
-Although the lazy leveling policy has a smaller write amplification than the leveling policy, it increases the number of sorted runs and harms the performance of range scans.
-
-To simplify the analysis of the cost of range scan, we do not consider range filters here. Therefore, each range scan will read every sorted run. We also don't consider the sequential read cost in the range scan. Therefore, each sorted run contributes equally to the range scan cost, and we can consider that the range scan cost is the number of sorted runs. We denote the range scan cost as $r(\vec k)$, then $r(\vec k) = 1 + \sum_{i=1}^{L-1} k_i$.
+Range scan is a query type that retrieves all records in the given range. To scan a range, we first seek the begin key in all sorted runs, and then sequentially read subsequent records until the end of the range. We don't consider the sequential read cost in the range scan. Therefore, each sorted run contributes equally to the range scan cost, and we can consider that the range scan cost is the number of sorted runs. We denote the range scan cost as $r(\vec k)$, then $r(\vec k) = 1 + \sum_{i=1}^{L-1} k_i$. Although the lazy leveling policy has a smaller write amplification than the leveling policy, it increases the number of sorted runs and harms the performance of range scans.
 
 Then we analyze the write amplification. Level $1$ to Level $L-1$ uses the tiering compaction policy, therefore each level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, in which $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification $w(\vec k, C) = L - 1 + C$, in which $L-1$ is the length of $\vec k$.
 
