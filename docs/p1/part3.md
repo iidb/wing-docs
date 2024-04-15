@@ -23,7 +23,7 @@ Then we analyze the write cost. Suppose there are $L$ levels in total. Level $1$
 
 We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
-Your task: given $a, N, F$, the size of the last level $N$, the SSTable size $F$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$.
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and benchmark it using `TODO`
 
 Please write a report detailing the algorithm you have designed and implemented. 
 
@@ -31,12 +31,12 @@ You can get points as long as your solution is reasonable and well-founded.
 
 ## Problem 3: find the best compaction policy considering range filters (3pts)
 
-Similar to bloom filters, there are also range filters. They can determine whether keys exist within a specified range in a sorted run. It allows range scans to skip sorted runs without relevant keys, optimizing query performance. We assume that we have a perfect range filter which does not produce false positives. Using this range filter, we can calculate the read cost cased on the expected number of sorted runs that need to read.
+Similar to bloom filters, there are also range filters. They can determine whether keys exist within a specified range in a sorted run. It allows range scans to skip sorted runs without relevant keys, optimizing query performance. We assume that we have a perfect range filter which does not produce false positives. Using this range filter, we can calculate the read cost based on the expected number of sorted runs that need to read.
 
-Let the total size of LSM-tree be $S$. Suppose there is a sorted run of size $T$ in the LSM-tree. Assuming that all the keys in the LSM-tree are unique and uniformly distributed, for a range scan of length $m$, the probability that a key from the sorted run will be in the result of the range scan is $1 - \prod_{i=0}^{m-1}\frac{S-T-i}{S-i}$. You can consider for the first key in the result of the range scan, the probability that the key is not in the sorted run is $\frac{S-T}{S}$, and for the second key it is $\frac{S-T-1}{S-1}$, and so on. This probability is approximately $\approx 1-(1-\frac{T}{S})^m\approx 1-e^{-mT/S}$. Then the read cost can be calculated by $r(\vec k)=(\sum_{T} 1-e^{-mT/S})(block\ size)$. 
+Let the total size of LSM-tree be $S$. Suppose there is a sorted run of size $T$ in the LSM-tree. Assuming that all the keys in the LSM-tree are unique and uniformly distributed, for a range scan of length $m$, the probability that a key from the sorted run will be in the result of the range scan is $1 - \prod_{i=0}^{m-1}\frac{S-T-i}{S-i}$. You can consider for the first key in the result of the range scan, the probability that the key is not in the sorted run is $\frac{S-T}{S}$, and for the second key it is $\frac{S-T-1}{S-1}$, and so on. This probability is approximately $\approx 1-(1-\frac{T}{S})^m\approx 1-e^{-mT/S}$. Then the read cost can be calculated by $r(\vec k)=(\sum_{T} 1-e^{-mT/S})(block\ size)$. The write cost is the same as problem 2.
 
-Your task: given $a, N, F$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$. The total write amplification $w(\vec k, C) = L - 1 + C$. The range scan cost $r(\vec k)$ is what you need to solve.
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
 
-You should verify your solution via test $TODO$.
+Please write a report detailing the algorithm you have designed and implemented. 
 
 You can get points as long as your solution is reasonable and well-founded.
