@@ -22,9 +22,9 @@ Range scan is a query type that retrieves all records in the given range. To sca
 
 We can generalize the lazy leveling compaction policy by allowing different maximum numbers of sorted runs in non-last levels. Specifically, for Level $i$ where $i < L$, we designate the maximum number of sorted runs as $k_i$. We model the total cost of compactions and range scans in the generalized lazy leveling policy as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$. The write cost $w(\vec k, C) = (L - 1 + C)(input\ size)$. The read cost $r(\vec k)$ is what you need to model. $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and benchmark it using `TODO`.
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ and $C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal $\vec k$ and $C$ for every 5 seconds and apply the changes only when the optimal $k$ or $C$ differs much from the current value. You should evaluate your algorithm using `TODO` and compare the results with other compaction policies, such as leveling, tiering, and the original lazy leveling.
 
-Please write a report detailing the algorithm you have designed and implemented. 
+Please write a report detailing the algorithm you have designed and implemented. Furthermore, a thorough comparison with other compaction policies should be included in the report.
 
 You can get points as long as your solution is reasonable and well-founded.
 
