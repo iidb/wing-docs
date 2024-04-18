@@ -1,6 +1,6 @@
 # Part 3: Tradeoff between range scan and compaction
 
-## Problem 1: lazy leveling (4pts)
+## Problem 1: lazy leveling (3pts)
 
 We previously implemented the leveling compaction policy: there is only one sorted run in each level, and the size of the latter level is $T$ times the size of the former level. Therefore, the write amplification to compaction one key to the next level is $T$. If there are $L$ levels, the write amplification is $TL$.
 
@@ -8,7 +8,7 @@ Tiering is another compaction policy: there are at most $T$ sorted runs in each 
 
 However, the tiering policy suffers from high space amplification. In the worst case, there can be $T$ duplicate sorted runs in the last level, and the space amplification can be $T$. It is unacceptable. Thus, lazy leveling is proposed. Lazy leveling combines the advantages of the leveling policy and the tiering policy. Suppose there are $L$ levels in total. Lazy leveling uses the tiering compaction policy in Level $1$, Level $2$, \cdots, Level $L-1$ to reduce the write amplification. The maximum number of sorted runs in these levels is $T$. Lazy leveling limits the space amplification by allowing only one sorted run in the last level. When the number of sorted runs in Level $1$, $2$, $\cdots$, $L-2$ reaches $T$, all these sorted runs in the respective level will be merged into a new sorted run in the next level. When the number of sorted runs in Level $L-1$ reaches $T$, all sorted runs in it will be merged into the sorted run in Level $L$.
 
-Here we analyze the write amplification of lazy leveling. Similar to the tiering policy, each non-last level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, where $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification is $L - 1 + C$. The write cost is $w(\vec k, C) = (L - 1 + C)(input\ size)$.
+Here we analyze the write amplification of lazy leveling. Similar to the tiering policy, each non-last level contributes $1$ to the write amplification. The last level uses the leveling compaction policy, therefore it contributes $C$ to the write amplification, where $C$ is the size ratio between Level $L$ and Level $L-1$. Therefore, the total write amplification is $L - 1 + C$. The write cost $w$ is $(L - 1 + C)(input\ size)$.
 
 Your tasks are as follows:
 
@@ -16,11 +16,11 @@ Your tasks are as follows:
    
 2. Measure the write amplification in the test and compare it with the theoretical write amplification $L - 1 + C$ in the report. If they are different, please analyze the reason.
 
-## Problem 2: find the best compaction policy (3pts)
+## Problem 2: find the best compaction policy (4pts)
 
-Range scan is a query type that retrieves all records in the given range. To scan a range, we first seek the begin key in all sorted runs, and then sequentially read subsequent records until the end of the range. In problem 2 and problem 3, we only consider short range scan (scan length $\leq 100$). We assume that for each sorted run, we read only one block. So the range scan cost is $r(\vec k)=(1 + \sum_{i=1}^{L-1} k_i)(block\ size)$.  
+Range scan is a query type that retrieves all records in the given range. To scan a range, we first seek the begin key in all sorted runs, and then sequentially read subsequent records until the end of the range. In problem 2 and problem 3, we only consider short range scan (scan length $\leq 100$). We assume that for each sorted run, we read only one block. So the range scan cost for lazy leveling is $(1 + T (L-1))(block\ size)$, where $1 + T(L-1)$ is the number of sorted runs.
 
-We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
+We can generalize the lazy leveling compaction policy by allowing different maximum numbers of sorted runs in non-last levels. Specifically, for Level $i$ where $i < L$, we designate the maximum number of sorted runs as $k_i$. We model the total cost of compactions and range scans in the generalized lazy leveling policy as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$. The write cost $w(\vec k, C) = (L - 1 + C)(input\ size)$. The read cost $r(\vec k)$ is what you need to model. $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
 Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and benchmark it using `TODO`.
 
