@@ -1,5 +1,7 @@
 # Part 3: Tradeoff between range scan and compaction
 
+You should submit your code and report on the Web Learning 网络学堂. In the report, you need to write your answers to the problems.
+
 ## Problem 1: lazy leveling (3pts)
 
 We previously implemented the leveling compaction policy: there is only one sorted run in each level, and the size of the latter level is $T$ times the size of the former level. Therefore, the write amplification to compaction one key to the next level is $T$. If there are $L$ levels, the write amplification is $TL$.
@@ -12,7 +14,7 @@ Here we analyze the write amplification of lazy leveling. Similar to the tiering
 
 Your tasks are as follows:
 
-1. Implement lazy leveling in `LazyLevelingCompactionPicker::Get`. You can test it through `test/test_lsm --gtest_filter=LSMTest.LazyLevelingCompactionTest`.
+1. Implement lazy leveling in `LazyLevelingCompactionPicker::Get`. You can test it through `test/test_lsm --gtest_filter=LSMTest.LazyLevelingCompactionTest`. Please submit to autolab.
    
 2. Measure the write amplification in the test and compare it with the theoretical write amplification $L - 1 + C$ in the report. If they are different, please analyze the reason.
 
@@ -20,22 +22,32 @@ Your tasks are as follows:
 
 Range scan is a query type that retrieves all records in the given range. To scan a range, we first seek the begin key in all sorted runs, and then sequentially read subsequent records until the end of the range. In problem 2 and problem 3, we only consider short range scan (scan length $\leq 100$). We assume that for each sorted run, we read only one block. So the range scan cost for lazy leveling is $(1 + T (L-1))(block\ size)$, where $1 + T(L-1)$ is the number of sorted runs.
 
-We can generalize the lazy leveling compaction policy by allowing different maximum numbers of sorted runs in non-last levels. Specifically, for Level $i$ where $i < L$, we designate the maximum number of sorted runs as $k_i$. We model the total cost of compactions and range scans in the generalized lazy leveling policy as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$. The write cost $w(\vec k, C) = (L - 1 + C)(input\ size)$. The read cost $r(\vec k)$ is what you need to model. $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
+We can generalize the lazy leveling compaction policy by allowing different maximum numbers of sorted runs in non-last levels. Specifically, for Level $i$ where $i < L$, we designate the maximum number of sorted runs as $k_i$. We model the total cost of compactions and range scans in the generalized lazy leveling policy as $f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)$. The write cost $w(\vec k, C) = (L - 1 + C)(input\ size)$. The read cost $r(\vec k)$ is what you need to model. $\alpha$ describes the workload: a small $\alpha$ for a write-heavy workload and a large $\alpha$ for a scan-heavy workload.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ and $C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal $\vec k$ and $C$ for every 5 seconds and apply the changes only when the optimal $\vec k$ or $C$ differs much from the current value. You should evaluate your algorithm using `TODO` and compare the results with other compaction policies, such as leveling, tiering, and the original lazy leveling.
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ and $C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `FluidCompactionPicker::Get` and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal $\vec k$ and $C$ for every 5 seconds and apply the changes only when the optimal $\vec k$ or $C$ differs much from the current value. 
 
-Please write a report detailing the algorithm you have designed and implemented. Furthermore, a thorough comparison with other compaction policies should be included in the report.
+We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filter=LSMTest.Part3Benchmark1`. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.
+
+Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the `alpha` value in the benchmark (passing different `alpha` value to `Part3Benchmark` function), and determine the range of `alpha` where your algorithm performs the best. 
+
+The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to be larger than `N` in this problem.
 
 You can get points as long as your solution is reasonable and well-founded.
 
 ## Problem 3: find the best compaction policy considering range filters (3pts)
 
-Similar to bloom filters, there are also range filters. They can determine whether keys exist within a specified range in a sorted run. It allows range scans to skip sorted runs without relevant keys, optimizing query performance. We assume that we have a perfect range filter which does not produce false positives. Using this range filter, we can calculate the read cost based on the expected number of sorted runs that need to read.
+Similar to bloom filters, there are also range filters. They can determine whether keys exist within a specified range in a sorted run. It allows range scans to skip sorted runs without relevant keys, optimizing query performance. We assume that we have a perfect range filter which does not produce false positives. Using this range filter, we can calculate the read cost based on the expected number of sorted runs that need to read. We also assume that the length $m$ of range scan is always the same.
 
 Let the total size of LSM-tree be $S$. Suppose there is a sorted run of size $T$ in the LSM-tree. Assuming that all the keys in the LSM-tree are unique and uniformly distributed, for a range scan of length $m$, the probability that a key from the sorted run will be in the result of the range scan is $1 - \prod_{i=0}^{m-1}\frac{S-T-i}{S-i}$. You can consider for the first key in the result of the range scan, the probability that the key is not in the sorted run is $\frac{S-T}{S}$, and for the second key it is $\frac{S-T-1}{S-1}$, and so on. This probability is approximately $\approx 1-(1-\frac{T}{S})^m\approx 1-e^{-mT/S}$. Then the read cost can be calculated by $r(\vec k)=(\sum_{T} 1-e^{-mT/S})(block\ size)$. The write cost is the same as problem 2.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$.
+The code of estimation is in `Part3Benchmark` function.
 
-Please write a report detailing the algorithm you have designed and implemented. 
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$. You need to implement it in `FluidCompactionPicker::Get`.
+
+We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filter=LSMTest.Part3Benchmark2`. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.
+
+Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the `alpha` value in the benchmark, and determine the range of `alpha` where your algorithm performs the best.
+
+The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to 100 by default. You can also pass different `scan_length` to this function.
 
 You can get points as long as your solution is reasonable and well-founded.
