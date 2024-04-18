@@ -4,16 +4,15 @@
 
 We previously implemented the leveling compaction policy: there is only one sorted run in each level, and the size of the latter level is $T$ times the size of the former level. Therefore, the write amplification to compaction one key to the next level is $T$. If there are $L$ levels, the write amplification is $TL$.
 
-Tiering is another compaction policy: there are at most $T$ sorted runs in each level, and when the number of sorted runs in a level reaches $T$, all $T$ sorted runs will be merged (i.e., compacted) into a new sorted run in the next level. During each compaction, a key will be written only once. Therefore, if there are $L$ levels, a key will be compacted at most $L$ times, and the write amplification of the tiering policy is $L$, which is smaller than the write amplification of the leveling policy ($TL$). Although the increased number of sorted runs harms the performance of range scans, the tiering compaction policy is better than the leveling policy if the workload is write-heavy.
+Tiering is another compaction policy: there are at most $T$ sorted runs in each level, and when the number of sorted runs in a level reaches $T$, all $T$ sorted runs will be merged (i.e., compacted) into a new sorted run in the next level. Since for each key, it can only be compacted from one level to the next level, a key will be compacted at most $L$ times if there are $L$ levels. Thus the write amplification of the tiering policy is $O(L)$. It is smaller than the write amplification of leveling strategy $O(TL)$. 
 
-However, the tiering policy suffers from high space amplification. There are $T$ sorted runs in the last level, and they may all contain the same set of keys. Therefore, in the worst case, as much as $\frac{T-1}{T}$ of the LSM-tree data are stale data, and only $\frac{1}{T}$ are latest data. The space amplification of the tiering policy can be larger than $T$ in the worst case. It is unacceptable.
-
-Lazy leveling limits the space amplification by allowing only one sorted run in the last level. Lazy leveling allows $T$ sorted runs in other levels to reduce the write amplification.
+However, the tiering policy suffers from high space amplification. In the worst case, there can be $T$ duplicate sorted runs in the last level, and the space amplification can be $T$. It is unacceptable. Thus, lazy leveling is proposed. Lazy leveling limits the space amplification by allowing only one sorted run in the last level. Lazy leveling allows $T$ sorted runs in other levels to reduce the write amplification.
 
 Your tasks are as follows:
 
-1. Implement lazy leveling. To facilitate the exploration of Problem 2, you need to implement a compaction policy API that you can specify the number of sorted runs in Level $1$ to Level $L-1$. The arguments are $k_1, k_2, \cdots, k_{L-1}, C$, in which $k_i$ stands for the number of sorted runs in Level $i$, and $C$ stands for the size ratio between Level $L$ and Level $L-1$. Note that you should determine the sizes of each level by the size of the last level. For example, if the size of the last level is $N$, the size of Level $L-1$ should be $\frac{N}{C}$, and the size of Level $L-2$ should be $\frac{N}{C k_{L-1}}$.
-2. Measure the write amplification in the test `TODO`. Calculate the theoretical write amplification and compare it with the measured one.
+1. Implement lazy leveling in `LazyLevelingCompactionPicker::Get`. You can test it through `test/test_lsm --gtest_filter=LSMTest.LazyLevelingCompactionTest`.
+   
+2. Measure the write amplification in the test. Calculate the theoretical write amplification, report the measured result and theoretical result. If they are different, please analyze the reason.
 
 ## Problem 2: find the best compaction policy (3pts)
 
@@ -23,7 +22,7 @@ Then we analyze the write cost. Suppose there are $L$ levels in total. Level $1$
 
 We model the total cost of compactions and range scans as $f(\vec k, C) = w(\vec k, C) + a r(\vec k)$, in which $a$ describes the workload: a small $a$ for a write-heavy workload and a large $a$ for a scan-heavy workload.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and benchmark it using `TODO`
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `Part3CompactionPicker::Get` and benchmark it using `TODO`.
 
 Please write a report detailing the algorithm you have designed and implemented. 
 
