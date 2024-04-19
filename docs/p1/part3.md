@@ -24,7 +24,7 @@ Range scan is a query type that retrieves all records in the given range. To sca
 
 We can generalize the lazy leveling compaction policy by allowing different maximum numbers of sorted runs in non-last levels. Specifically, for Level $i$ where $i < L$, we designate the maximum number of sorted runs as $k_i$. We model the total cost of compactions and range scans in the generalized lazy leveling policy as $f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)$. The write cost $w(\vec k, C) = (L - 1 + C)(input\ size)$. The read cost $r(\vec k)$ is what you need to model. $\alpha$ describes the workload: a small $\alpha$ for a write-heavy workload and a large $\alpha$ for a scan-heavy workload.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, find $\vec k$ and $C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `FluidCompactionPicker::Get` and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal $\vec k$ and $C$ for every 5 seconds and apply the changes only when the optimal $\vec k$ or $C$ differs much from the current value. 
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $alpha$, find $\vec k$ and $C$ that minimize $f(\vec k, C)$ and satisfy $N = \prod_{i=1}^{L-1} k_i F C$. You need to design an algorithm to calculate optimal $\vec k, C$ based on parameters. More specifically, you need to implement `FluidCompactionPicker::Get` and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal $\vec k$ and $C$ for every 5 seconds and apply the changes only when the optimal $\vec k$ or $C$ differs much from the current value. 
 
 We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filter=LSMTest.Part3Benchmark1`. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.
 
@@ -42,7 +42,7 @@ Let the total size of LSM-tree be $S$. Suppose there is a sorted run of size $T$
 
 The code of estimation is in `Part3Benchmark` function.
 
-Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $a$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$. You need to implement it in `FluidCompactionPicker::Get`.
+Your task: given the size of the last level $N$, the base level size $F$, the workload parameter $alpha$, and the range scan length $m$, approximate the read cost and write cost, find $\vec k, C$ that minimize $f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)$ and satisfy $N = \prod_{i=1}^{L-1} k_i C F$. You need to implement it in `FluidCompactionPicker::Get`.
 
 We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filter=LSMTest.Part3Benchmark2`. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.
 
