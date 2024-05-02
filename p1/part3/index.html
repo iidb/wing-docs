@@ -13,7 +13,7 @@
       <script>
         // Current page data
         var mkdocs_page_name = "Part 3";
-        var mkdocs_page_input_path = "p1/part3.md";
+        var mkdocs_page_input_path = "p1\\part3.md";
         var mkdocs_page_url = null;
       </script>
     
@@ -108,7 +108,17 @@
 <p>Your task: given the size of the last level <span class="arithmatex"><span class="MathJax_Preview">N</span><script type="math/tex">N</script></span>, the base level size <span class="arithmatex"><span class="MathJax_Preview">F</span><script type="math/tex">F</script></span>, the workload parameter <span class="arithmatex"><span class="MathJax_Preview">alpha</span><script type="math/tex">alpha</script></span>, find <span class="arithmatex"><span class="MathJax_Preview">\vec k</span><script type="math/tex">\vec k</script></span> and <span class="arithmatex"><span class="MathJax_Preview">C</span><script type="math/tex">C</script></span> that minimize <span class="arithmatex"><span class="MathJax_Preview">f(\vec k, C)</span><script type="math/tex">f(\vec k, C)</script></span> and satisfy <span class="arithmatex"><span class="MathJax_Preview">N = \prod_{i=1}^{L-1} k_i F C</span><script type="math/tex">N = \prod_{i=1}^{L-1} k_i F C</script></span>. You need to design an algorithm to calculate optimal <span class="arithmatex"><span class="MathJax_Preview">\vec k, C</span><script type="math/tex">\vec k, C</script></span> based on parameters. More specifically, you need to implement <code>FluidCompactionPicker::Get</code> and adjust the maximum number of sorted runs in each level based on your algorithms. You may explore when and how to adjust the maximum number of sorted runs in each level. For example, you may calculate the optimal <span class="arithmatex"><span class="MathJax_Preview">\vec k</span><script type="math/tex">\vec k</script></span> and <span class="arithmatex"><span class="MathJax_Preview">C</span><script type="math/tex">C</script></span> for every 5 seconds and apply the changes only when the optimal <span class="arithmatex"><span class="MathJax_Preview">\vec k</span><script type="math/tex">\vec k</script></span> or <span class="arithmatex"><span class="MathJax_Preview">C</span><script type="math/tex">C</script></span> differs much from the current value. </p>
 <p>We provide a basic benchmark that can be executed by <code>test/test_lsm --gtest_filter=LSMTest.Part3Benchmark1</code>. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.</p>
 <p>Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the <code>alpha</code> value in the benchmark (passing different <code>alpha</code> value to <code>Part3Benchmark</code> function), and determine the range of <code>alpha</code> where your algorithm performs the best. </p>
-<p>The parameters in <code>Part3Benchmark(alpha, N, scan_length)</code> are: <code>alpha</code> value, <code>N</code> is the number of keys, <code>scan_length</code> is the length of range scan. <code>scan_length</code> is set to be larger than <code>N</code> in this problem.</p>
+<p>The parameters in <code>Part3Benchmark(alpha, N, scan_length)</code> are: <code>alpha</code> value, <code>N</code> is the number of keys, <code>scan_length</code> is the length of range scan. <code>scan_length</code> is set to be larger than <code>N</code> in this problem to ensure that all sorted runs are accessed. The read cost is still calculated by <code>(number of sorted runs)*(block size)</code> regardless of long <code>scan_length</code>. The read cost is calculated in the benchmark function as follows:</p>
+<pre><code class="language-python">read cost = 0
+write cost = 0
+for T in range(10):
+  insert 10% of key-value pairs
+  read cost += (number of sorted runs) * (block size) * (number of inserted key pairs)
+  write cost += (write cost of inserted key pairs)
+read cost /= 10
+write cost /= 10
+total cost = (read cost) * alpha + (write cost)
+</code></pre>
 <p>You can get points as long as your solution is reasonable and well-founded.</p>
 <h2 id="problem-3-find-the-best-compaction-policy-considering-range-filters-3pts">Problem 3: find the best compaction policy considering range filters (3pts)</h2>
 <p>Similar to bloom filters, there are also range filters. They can determine whether keys exist within a specified range in a sorted run. It allows range scans to skip sorted runs without relevant keys, optimizing query performance. We assume that we have a perfect range filter which does not produce false positives. Using this range filter, we can calculate the read cost based on the expected number of sorted runs that need to read. We also assume that the length <span class="arithmatex"><span class="MathJax_Preview">m</span><script type="math/tex">m</script></span> of range scan is always the same.</p>
@@ -117,7 +127,17 @@
 <p>Your task: given the size of the last level <span class="arithmatex"><span class="MathJax_Preview">N</span><script type="math/tex">N</script></span>, the base level size <span class="arithmatex"><span class="MathJax_Preview">F</span><script type="math/tex">F</script></span>, the workload parameter <span class="arithmatex"><span class="MathJax_Preview">alpha</span><script type="math/tex">alpha</script></span>, and the range scan length <span class="arithmatex"><span class="MathJax_Preview">m</span><script type="math/tex">m</script></span>, approximate the read cost and write cost, find <span class="arithmatex"><span class="MathJax_Preview">\vec k, C</span><script type="math/tex">\vec k, C</script></span> that minimize <span class="arithmatex"><span class="MathJax_Preview">f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)</span><script type="math/tex">f(\vec k, C) = w(\vec k, C) + \alpha r(\vec k)</script></span> and satisfy <span class="arithmatex"><span class="MathJax_Preview">N = \prod_{i=1}^{L-1} k_i C F</span><script type="math/tex">N = \prod_{i=1}^{L-1} k_i C F</script></span>. You need to implement it in <code>FluidCompactionPicker::Get</code>.</p>
 <p>We provide a basic benchmark that can be executed by <code>test/test_lsm --gtest_filter=LSMTest.Part3Benchmark2</code>. Your algorithm should outperform than the baseline. There is no need to submit to autolab due to the long execution time.</p>
 <p>Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the <code>alpha</code> value in the benchmark, and determine the range of <code>alpha</code> where your algorithm performs the best.</p>
-<p>The parameters in <code>Part3Benchmark(alpha, N, scan_length)</code> are: <code>alpha</code> value, <code>N</code> is the number of keys, <code>scan_length</code> is the length of range scan. <code>scan_length</code> is set to 100 by default. You can also pass different <code>scan_length</code> to this function.</p>
+<p>The parameters in <code>Part3Benchmark(alpha, N, scan_length)</code> are: <code>alpha</code> value, <code>N</code> is the number of keys, <code>scan_length</code> is the length of range scan. <code>scan_length</code> is set to 100 by default. You can also pass different <code>scan_length</code> to this function. The read cost is calculated as follows:</p>
+<pre><code class="language-python">read cost = 0
+write cost = 0
+for T in range(10):
+  insert 10% of key-value pairs
+  read cost += (number of sorted runs that need to be accessed) * (block size) * (number of inserted key pairs)
+  write cost += (write cost of inserted key pairs)
+read cost /= 10
+write cost /= 10
+total cost = (read cost) * alpha + (write cost)
+</code></pre>
 <p>You can get points as long as your solution is reasonable and well-founded.</p>
               
             </div>
