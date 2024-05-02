@@ -30,7 +30,16 @@ We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filt
 
 Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the `alpha` value in the benchmark (passing different `alpha` value to `Part3Benchmark` function), and determine the range of `alpha` where your algorithm performs the best. 
 
-The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to be larger than `N` in this problem.
+The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to be larger than `N` in this problem to ensure that all sorted runs are accessed. The read cost is still calculated by `(number of sorted runs)*(block size)` regardless of long `scan_length`. The read cost is calculated in the benchmark function as follows:
+
+```python
+read cost = 0
+for T in range(10):
+  insert 10% of key-value pairs
+  read cost += (number of sorted runs) * (block size) * (number of inserted key pairs)
+read cost /= 10
+total cost = (read cost) * alpha + (write cost)
+```
 
 You can get points as long as your solution is reasonable and well-founded.
 
@@ -48,6 +57,15 @@ We provide a basic benchmark that can be executed by `test/test_lsm --gtest_filt
 
 Please write a report detailing the algorithm you have designed and implemented. Additionally, include a comprehensive comparison with other compaction policies. Compare your algorithm with other compaction policies, including leveling, tiering, and lazy leveling in problem 1. Furthermore, adjust the `alpha` value in the benchmark, and determine the range of `alpha` where your algorithm performs the best.
 
-The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to 100 by default. You can also pass different `scan_length` to this function.
+The parameters in `Part3Benchmark(alpha, N, scan_length)` are: `alpha` value, `N` is the number of keys, `scan_length` is the length of range scan. `scan_length` is set to 100 by default. You can also pass different `scan_length` to this function. The read cost is calculated as follows:
+
+```python
+read cost = 0
+for T in range(10):
+  insert 10% of key-value pairs
+  read cost += (number of sorted runs that need to be accessed) * (block size) * (number of inserted key pairs)
+read cost /= 10
+total cost = (read cost) * alpha + (write cost)
+```
 
 You can get points as long as your solution is reasonable and well-founded.
