@@ -16,7 +16,7 @@ Operators (Executors) are organized as a tree. The system calls the `Next()` fun
 
 ## Data structure
 
-The batch of tuples is stored in `TupleBatch` (refer to`type/tuple_batch.hpp`). `TupleBatch` has `Vector`s storing each column (refer to `type/vector.hpp` and `type/vector_buffer.hpp`) and a selection vector storing validation bits. The selection vector is used in cases of high selectivity (for example, when 95\% of tuples are valid, we do not need to eliminate invalid ones; instead we just mark them as invalid.). Each `Vector` has an array of elements. Each element is of type `StaticFieldRef` (refer to `type/static_field.hpp`). It is an 8-byte object that can store a 64-bit integer (`LogicalType::INT`, refer to `type/field_type.hpp`) or 64-bit float (`LogicalType::FLOAT`) or a string pointer (`LogicalType::STRING`). If the `Vector` stores strings, it stores an array of string pointers and a pointer to an auxlitary buffer (`Vector::aux_`) which stores actual string data.
+The batch of tuples is stored in `TupleBatch` (refer to`type/tuple_batch.hpp`). `TupleBatch` has `Vector`s storing each column (refer to `type/vector.hpp` and `type/vector_buffer.hpp`) and a selection vector storing validation bits. The selection vector is used in cases of low selectivity (for example, when 95\% of tuples are valid, we do not need to eliminate invalid ones; instead we just mark them as invalid.). Each `Vector` has an array of elements. Each element is of type `StaticFieldRef` (refer to `type/static_field.hpp`). It is an 8-byte object that can store a 64-bit integer (`LogicalType::INT`, refer to `type/field_type.hpp`) or 64-bit float (`LogicalType::FLOAT`) or a string pointer (`LogicalType::STRING`). If the `Vector` stores strings, it stores an array of string pointers and a pointer to an auxlitary buffer (`Vector::aux_`) which stores actual string data.
 
 ![](pics/tuplebatch.png)
 
@@ -70,6 +70,7 @@ for (auto t : batch) {
 
 ```
 
+`Vector` has two types: constant and flat. If its type is flat, then it stores a normal array. If its type is constant, then it is a vector in which all the elements are the same. Physically it only stores one element. It is used for constants in the expressions, or nest loop join executors. To create a vector, you need to pass the vector type (`VectorType::Flat` or `VectorType::Constant`), the element type (`LogicalType::FLOAT`, `LogicalType::STRING` and `LogicalType::INT`), and the number of elements of the vector. There is no validation information in `Vector`. It assumes that all the elements in `Vector` are valid and need to be calculated in expression evaluation.
 
 ## OutputSchema
 
@@ -77,7 +78,9 @@ Since SQL is a statically-typed language, the types of the output of operators a
 
 ## ExprVecExecutor
 
-In vectorized execuction engine, expressions are evaluated in batches, greatly decreasing the interpretation overhead. For each expression, we construct an executor called `ExprVecExecutor`.
+In vectorized execuction engine, expressions are evaluated in batches, greatly reducing the interpretation overhead. For each expression, we construct an executor called `ExprVecExecutor`. `ExprVecExecutor`s are organized as a tree, where the leaf nodes of the tree are input, the root node stores the result into the result `Vector`. The expression is evaluated from the bottom to the top, and inner nodes (nodes that are not leafs) may need to allocate a buffer to store temporary results. Here is an example shown in the figure below.
+
+![](expreval.png)
 
 You can find `ExprVecExecutor` in `execution/vec/expr_vexecutor.hpp`. To create an `ExprVecExecutor`, you need to pass a pointer to `Expr`, which stores expression information, and a `OutputSchema`, which stores type information. To evaluate the expression, you need to pass a `std::span<Vector>` (`std::span` is similar to `std::string_view`, but it is used for `std::vector` or `std::array` objects) with the same types in the `OutputSchema` you passed during creation, and the number of tuples in the input, and a reference to the result `Vector`. Here is an example (refer to `execution/vec/project_vexecutor.hpp`):
 
