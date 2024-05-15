@@ -2,7 +2,7 @@ In Project 2, you will implement a pull-based vectorized execution engine.
 
 ## Vectorized engine
 
-Volcano-style engines are simple and easy to implement, but they have poor performance due to the large overhead in virtual function calls. While they worked well in the past because disk I/O was the primary bottleneck, they are inefficient on modern CPUs and disks. Most modern query engines eigher use vectorization or data-centric code generation (just-in-time compliation). Vectorized engines fetch a batch of tuples instead of just one at a time, which amortizes the virtual function call overhead and can leverage SIMD (Single Instruction, Multiple Data) techniques.
+Volcano-style engines are simple and easy to implement, but they have poor performance due to the large overhead in virtual function calls. While they worked well in the past because disk I/O was the primary bottleneck, they are inefficient on modern CPUs and disks. Most modern query engines either use vectorization or data-centric code generation (just-in-time compilation). Vectorized engines fetch a batch of tuples instead of just one at a time, which amortizes the virtual function call overhead and can leverage SIMD (Single Instruction, Multiple Data) techniques.
 
 In `execution/executor.hpp`, you can find the interfaces in `VecExecutor`. The interfaces are:
 
@@ -16,7 +16,7 @@ Operators (Executors) are organized as a tree. The system calls the `Next()` fun
 
 ## Data structure
 
-The batch of tuples is stored in `TupleBatch` (refer to`type/tuple_batch.hpp`). `TupleBatch` has `Vector`s storing each column (refer to `type/vector.hpp` and `type/vector_buffer.hpp`) and a selection vector storing validation bits. The selection vector is used in cases of high selectivity (for example, when 95\% of tuples are valid, we do not need to eliminate invalid ones; instead we just mark them as invalid.). Each `Vector` has an array of elements. Each element is of type `StaticFieldRef` (refer to `type/static_field.hpp`). It is an 8-byte object that can store a 64-bit integer (`LogicalType::INT`, refer to `type/field_type.hpp`) or 64-bit float (`LogicalType::FLOAT`) or a string pointer (`LogicalType::STRING`). If the `Vector` stores strings, it stores an array of string pointers and a pointer to an auxlitary buffer (`Vector::aux_`) which stores actual string data.
+The batch of tuples is stored in `TupleBatch` (refer to `type/tuple_batch.hpp`). `TupleBatch` has `Vector`s storing each column (refer to `type/vector.hpp` and `type/vector_buffer.hpp`) and a selection vector storing validation bits. The selection vector is used in cases of high selectivity (for example, when 95\% of tuples are valid, we do not need to eliminate invalid ones; instead we just mark them as invalid.). Each `Vector` has an array of elements. Each element is of type `StaticFieldRef` (refer to `type/static_field.hpp`). It is an 8-byte object that can store a 64-bit integer (`LogicalType::INT`, refer to `type/field_type.hpp`) or 64-bit float (`LogicalType::FLOAT`) or a string pointer (`LogicalType::STRING`). If the `Vector` stores strings, it stores an array of string pointers and a pointer to an auxlitary buffer (`Vector::aux_`) which stores actual string data.
 
 ![](pics/tuplebatch.png)
 
