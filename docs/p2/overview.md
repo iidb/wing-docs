@@ -2,7 +2,7 @@ In Project 2, you will implement a pull-based vectorized execution engine.
 
 ## Vectorized engine
 
-Volcano-style engines are simple and easy to implement, but they have poor performance due to the large overhead in virtual function calls. While they worked well in the past because disk I/O was the primary bottleneck, they are inefficient on modern CPUs and disks. Most modern query engines eigher use vectorization or data-centric code generation (just-in-time compliation). Vectorized engines fetch a batch of tuples instead of just one at a time, which amortizes the virtual function call overhead and can leverage SIMD (Single Instruction, Multiple Data) techniques.
+Volcano-style engines are simple and easy to implement, but they have poor performance due to the large overhead in virtual function calls. While they worked well in the past because disk I/O was the primary bottleneck, they are inefficient on modern CPUs and disks. Most modern query engines either use vectorization or data-centric code generation (just-in-time compilation). Vectorized engines fetch a batch of tuples instead of just one at a time, which amortizes the virtual function call overhead and can leverage SIMD (Single Instruction, Multiple Data) techniques.
 
 In `execution/executor.hpp`, you can find the interfaces in `VecExecutor`. The interfaces are:
 
