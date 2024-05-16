@@ -80,7 +80,7 @@ Since SQL is a statically-typed language, the types of the output of operators a
 
 In vectorized execuction engine, expressions are evaluated in batches, greatly reducing the interpretation overhead. For each expression, we construct an executor called `ExprVecExecutor` (refer to `execution/vec/expr_vexecutor.hpp`). `ExprVecExecutor`s are organized as a tree, where the leaf nodes of the tree are input, the root node stores the result into the result `Vector`. The expression is evaluated from the bottom to the top, and inner nodes (nodes that are not leafs) may need to allocate a buffer to store temporary results. Here is an example shown in the figure below.
 
-![](expreval.png)
+![](pics/expreval.png)
 
 You can find `ExprVecExecutor` in `execution/vec/expr_vexecutor.hpp`. To create an `ExprVecExecutor`, you need to pass a pointer to `Expr`, which stores expression information, and a `OutputSchema`, which stores type information. To evaluate the expression, you need to pass a `std::span<Vector>` (`std::span` is similar to `std::string_view`, but it is used for `std::vector` or `std::array` objects) with the same types in the `OutputSchema` you passed during creation, and the number of tuples (including valid tuples and invalid tuples, i.e. the return value of `TupleBatch::size`) in the input, and a reference to the result `Vector`. Here is an example (refer to `execution/vec/project_vexecutor.hpp`):
 
