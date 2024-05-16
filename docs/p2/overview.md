@@ -70,7 +70,7 @@ for (auto t : batch) {
 
 ```
 
-`Vector` has two types: constant and flat. If its type is flat, then it stores a normal array. If its type is constant, then it is a vector in which all the elements are the same. Physically it only stores one element. It is used for constants in the expressions, or nest loop join executors. To create a vector, you need to pass the vector type (`VectorType::Flat` or `VectorType::Constant`), the element type (`LogicalType::FLOAT`, `LogicalType::STRING` and `LogicalType::INT`), and the number of elements of the vector. There is no validation information in `Vector`. It assumes that all the elements in `Vector` are valid and need to be calculated in expression evaluation.
+`Vector` has two types: constant and flat. If its type is flat, then it stores a normal array. If its type is constant, then it is a vector in which all the elements are the same. Physically it only stores one element. It is used for constants in the expressions, or nested loop join executors. To create a vector, you need to pass the vector type (`VectorType::Flat` or `VectorType::Constant`), the element type (`LogicalType::FLOAT`, `LogicalType::STRING` and `LogicalType::INT`), and the number of elements of the vector. There is no validation information in `Vector`. It assumes that all the elements in `Vector` are valid and need to be calculated in expression evaluation.
 
 ## OutputSchema
 
@@ -78,11 +78,11 @@ Since SQL is a statically-typed language, the types of the output of operators a
 
 ## ExprVecExecutor
 
-In vectorized execuction engine, expressions are evaluated in batches, greatly reducing the interpretation overhead. For each expression, we construct an executor called `ExprVecExecutor`. `ExprVecExecutor`s are organized as a tree, where the leaf nodes of the tree are input, the root node stores the result into the result `Vector`. The expression is evaluated from the bottom to the top, and inner nodes (nodes that are not leafs) may need to allocate a buffer to store temporary results. Here is an example shown in the figure below.
+In vectorized execuction engine, expressions are evaluated in batches, greatly reducing the interpretation overhead. For each expression, we construct an executor called `ExprVecExecutor` (refer to `execution/vec/expr_vexecutor.hpp`). `ExprVecExecutor`s are organized as a tree, where the leaf nodes of the tree are input, the root node stores the result into the result `Vector`. The expression is evaluated from the bottom to the top, and inner nodes (nodes that are not leafs) may need to allocate a buffer to store temporary results. Here is an example shown in the figure below.
 
 ![](expreval.png)
 
-You can find `ExprVecExecutor` in `execution/vec/expr_vexecutor.hpp`. To create an `ExprVecExecutor`, you need to pass a pointer to `Expr`, which stores expression information, and a `OutputSchema`, which stores type information. To evaluate the expression, you need to pass a `std::span<Vector>` (`std::span` is similar to `std::string_view`, but it is used for `std::vector` or `std::array` objects) with the same types in the `OutputSchema` you passed during creation, and the number of tuples in the input, and a reference to the result `Vector`. Here is an example (refer to `execution/vec/project_vexecutor.hpp`):
+You can find `ExprVecExecutor` in `execution/vec/expr_vexecutor.hpp`. To create an `ExprVecExecutor`, you need to pass a pointer to `Expr`, which stores expression information, and a `OutputSchema`, which stores type information. To evaluate the expression, you need to pass a `std::span<Vector>` (`std::span` is similar to `std::string_view`, but it is used for `std::vector` or `std::array` objects) with the same types in the `OutputSchema` you passed during creation, and the number of tuples (including valid tuples and invalid tuples, i.e. the return value of `TupleBatch::size`) in the input, and a reference to the result `Vector`. Here is an example (refer to `execution/vec/project_vexecutor.hpp`):
 
 ```c++
 OutputSchema input_schema; // The OutputSchema of the child executor, it has the type of input tuples.
@@ -106,7 +106,7 @@ create table A(a int64, b float64, c varchar(20), d int32);
 create table A2(a int64 primary key, b float64); -- a is the primary key of A2
 create table A3(a int64 auto_increment primary key , b float64); -- a is the primary key and it is an auto_increment value (you can always pass 0 to it while inserting and it is automatically set to 1, 2, 3, 4....)
 create table A4(a int64 foreign key references A(a), b float64); -- a is a foreign key referencing A(a).
-create table A4(a int64 primary key foreign key references A(a), b float64); -- a is a foreign key referencing A(a) and it is the primary key of A5.
+create table A5(a int64 primary key foreign key references A(a), b float64); -- a is a foreign key referencing A(a) and it is the primary key of A5.
 ```
 
 Drop a table:
@@ -150,4 +150,18 @@ To show the plan, you can use `explain` command:
 
 ```sql
 explain select * from A, B;
+```
+
+Here is a possible result:
+
+```sql
+Project [Output: a%0=A.a%0%int, a%2=B.a%2%int]
+  -> Join [Predicate: ]
+      -> Seq Scan [Table: A] [Predicate: ]
+      -> Seq Scan [Table: B] [Predicate: ]
+```
+
+If you want to exit:
+```sql
+exit
 ```
