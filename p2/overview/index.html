@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Overview - Wing</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Overview";
+        var mkdocs_page_input_path = "p2\\overview.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Wing
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Project 1</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../p1/overview/">Overview</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../p1/part1/">Part 1</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../p1/part2/">Part 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../p1/part3/">Part 3</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Project 2</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="./">Overview</a>
+    <ul class="current">
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../part1/">Part 1</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../part2/">Part 2</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../part3/">Part 3</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Wing</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Project 2</li>
+      <li class="breadcrumb-item active">Overview</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <p>In Project 2, you will implement a pull-based vectorized execution engine.</p>
+<h2 id="vectorized-engine">Vectorized engine</h2>
+<p>Volcano-style engines are simple and easy to implement, but they have poor performance due to the large overhead in virtual function calls. While they worked well in the past because disk I/O was the primary bottleneck, they are inefficient on modern CPUs and disks. Most modern query engines either use vectorization or data-centric code generation (just-in-time compilation). Vectorized engines fetch a batch of tuples instead of just one at a time, which amortizes the virtual function call overhead and can leverage SIMD (Single Instruction, Multiple Data) techniques.</p>
+<p>In <code>execution/executor.hpp</code>, you can find the interfaces in <code>VecExecutor</code>. The interfaces are:</p>
+<p><code>Init()</code>: Initializes the executor.</p>
+<p><code>Next()</code>: Returns a batch of tuples. If there are no tuples to return, it returns an empty result.</p>
+<p>Operators (Executors) are organized as a tree. The system calls the <code>Next()</code> function of the root operator of the tree, then the root operator calls the <code>Next()</code> functions of its children, and so on. The leaf operators of the tree are <code>SeqScanVecExecutor</code> which read tuple data from the storage engine and allocate a buffer to store them in memory. The tuple data is processed and transferred from the leaf to the root, and return to the system. The system calls <code>Next()</code> until it returns empty result.</p>
+<p><img alt="" src="../pics/operatortree.png" /></p>
+<h2 id="data-structure">Data structure</h2>
+<p>The batch of tuples is stored in <code>TupleBatch</code> (refer to<code>type/tuple_batch.hpp</code>). <code>TupleBatch</code> has <code>Vector</code>s storing each column (refer to <code>type/vector.hpp</code> and <code>type/vector_buffer.hpp</code>) and a selection vector storing validation bits. The selection vector is used in cases of low selectivity (for example, when 95\% of tuples are valid, we do not need to eliminate invalid ones; instead we just mark them as invalid.). Each <code>Vector</code> has an array of elements. Each element is of type <code>StaticFieldRef</code> (refer to <code>type/static_field.hpp</code>). It is an 8-byte object that can store a 64-bit integer (<code>LogicalType::INT</code>, refer to <code>type/field_type.hpp</code>) or 64-bit float (<code>LogicalType::FLOAT</code>) or a string pointer (<code>LogicalType::STRING</code>). If the <code>Vector</code> stores strings, it stores an array of string pointers and a pointer to an auxlitary buffer (<code>Vector::aux_</code>) which stores actual string data.</p>
+<p><img alt="" src="../pics/tuplebatch.png" /></p>
+<p>The figure above shows the structure of <code>TupleBatch</code>. The types of tuple are: <code>LogicalType::INT</code>, <code>LogicalType::FLOAT</code>, <code>LogicalType::INT</code>, <code>LogicalType::STRING</code>. The <code>Vector</code> which stores column <code>D</code> has a pointer to an auxlitary buffer storing actual string data.</p>
+<p>In <code>TupleBatch</code>, <code>num_tuple_</code> stores the number of tuples including valid ones and invalid ones, <code>num_valid_tuple_</code> stores the number of valid tuples, <code>capacity_</code> stores the maximum number of tuples. Like <code>capacity</code> and <code>size</code> in <code>std::vector</code>, <code>capacity_</code> can be larger than <code>num_tuple_</code> and tuples with indices between <code>num_tuple_</code> and <code>capacity_ - 1</code> are empty (neither valid nor invalid).</p>
+<p>To create a <code>TupleBatch</code>, you need to call <code>TupleBatch::Init</code>. You need to get the tuple type and pass it as <code>std::vector&lt;LogicalType&gt;</code>. If you have an <code>OutputSchema</code>, you can call <code>OutputSchema::GetTypes()</code> to get it. You also need to pass a initial size to the function, you can use <code>max_batch_size_</code> (the maximum batch size) in <code>VecExecutor</code>, so that it will not need to resize during execution. Here is an example:</p>
+<pre><code class="language-c++">OutputSchema table0_;
+TupleBatch batch;
+batch.Init(table0_.GetTypes(), max_batch_size_);
+</code></pre>
+<p>After the <code>TupleBatch</code> is created, it is empty, you can use <code>TupleBatch::Append</code> to append tuples. Note that this function deepcopies tuple data, i.e. it copies the string data and creates a new string pointer. So you do not need to worry about the string pointers being invalid. Here is an example:</p>
+<pre><code class="language-c++">TupleBatch result_;
+std::vector&lt;StaticFieldRef&gt; tuple;
+...
+// Append the tuple in std::vector&lt;StaticFieldRef&gt;
+result_.Append(tuple);
+std::vector&lt;Vector&gt; v;
+...
+// Append all tuples in std::vector&lt;Vector&gt;
+for (int i = 0; i &lt; tuple_cnt; i++) {
+  result_.Append(v, i);
+}
+</code></pre>
+<p>To access the j-th column of the i-th tuple, you can use <code>TupleBatch::Get(i, j)</code>. It returns a <code>StaticFieldRef</code> object, you can use <code>ReadInt</code>, <code>ReadFloat</code> or <code>ReadStringView</code> based on its type (type is not stored in <code>StaticFieldRef</code>, it is stored in other places such as <code>OutputSchema</code>). To assign a value to the j-th column of the i-th tuple, you can use <code>TupleBatch::Set(i, j, value)</code>. To get a reference to the i-th tuple, you can use <code>TupleBatch::GetSingleTuple(i)</code>, it returns a <code>TupleBatch::SingleTuple</code>, a read-only reference. You can use <code>operator[]</code> to access the j-th column in <code>TupleBatch::SingleTuple</code>, for example <code>GetSingleTuple(i)[j]</code> accesses the j-th column of the i-th tuple.</p>
+<p>To iterate over the valid tuples in <code>TupleBatch</code>, you can use: (1) iterate over all the tuples and use <code>TupleBatch::IsValid</code> to check if they are valid, or (2) use <code>TupleBatch::iterator</code> and <code>for(auto :)</code>, it only returns valid tuples. It returns <code>TupleBatch::SingleTuple</code>, a read-only reference. Here is an example:</p>
+<pre><code class="language-c++">// 1.
+TupleBatch batch;
+for (uint64_t i = 0; i &lt; batch.size(); i++) {
+  if (batch.IsValid(i)) {
+    // batch.Get(i, j) access the j-th column of i-th tuple.
+  }
+}
+
+// 2.
+TupleBatch batch;
+for (auto t : batch) {
+  // use t[i] to access the i-th column of the tuple
+  // use batch2.Append(t) to append the tuple to another tuple batch.
+}
+
+</code></pre>
+<p><code>Vector</code> has two types: constant and flat. If its type is flat, then it stores a normal array. If its type is constant, then it is a vector in which all the elements are the same. Physically it only stores one element. It is used for constants in the expressions, or nested loop join executors. To create a vector, you need to pass the vector type (<code>VectorType::Flat</code> or <code>VectorType::Constant</code>), the element type (<code>LogicalType::FLOAT</code>, <code>LogicalType::STRING</code> and <code>LogicalType::INT</code>), and the number of elements of the vector. There is no validation information in <code>Vector</code>. It assumes that all the elements in <code>Vector</code> are valid and need to be calculated in expression evaluation.</p>
+<h2 id="outputschema">OutputSchema</h2>
+<p>Since SQL is a statically-typed language, the types of the output of operators are known. They are stored in <code>OutputSchema</code> (refer to <code>plan/output_schema.hpp</code>) in <code>PlanNode::output_schema_</code> (refer to <code>plan/plan.hpp</code>). You can use <code>OutputSchema::GetTypes</code> to get types in <code>std::vector&lt;LogicalType&gt;</code>. To get more information, you can use <code>OutputSchema::operator[]</code> or <code>OutputSchema::GetCols</code> to get the <code>OutputColumnData</code> structure, which stores table name, column name, type, etc. You may also need to concatenate two <code>OutputSchema</code>s (e.g in the join executor), you can use <code>OutputSchema::Concat(left, right)</code>.</p>
+<h2 id="exprvecexecutor">ExprVecExecutor</h2>
+<p>In vectorized execuction engine, expressions are evaluated in batches, greatly reducing the interpretation overhead. For each expression, we construct an executor called <code>ExprVecExecutor</code> (refer to <code>execution/vec/expr_vexecutor.hpp</code>). <code>ExprVecExecutor</code>s are organized as a tree, where the leaf nodes of the tree are input, the root node stores the result into the result <code>Vector</code>. The expression is evaluated from the bottom to the top, and inner nodes (nodes that are not leafs) may need to allocate a buffer to store temporary results. Here is an example shown in the figure below.</p>
+<p><img alt="" src="expreval.png" /></p>
+<p>You can find <code>ExprVecExecutor</code> in <code>execution/vec/expr_vexecutor.hpp</code>. To create an <code>ExprVecExecutor</code>, you need to pass a pointer to <code>Expr</code>, which stores expression information, and a <code>OutputSchema</code>, which stores type information. To evaluate the expression, you need to pass a <code>std::span&lt;Vector&gt;</code> (<code>std::span</code> is similar to <code>std::string_view</code>, but it is used for <code>std::vector</code> or <code>std::array</code> objects) with the same types in the <code>OutputSchema</code> you passed during creation, and the number of tuples (including valid tuples and invalid tuples, i.e. the return value of <code>TupleBatch::size</code>) in the input, and a reference to the result <code>Vector</code>. Here is an example (refer to <code>execution/vec/project_vexecutor.hpp</code>):</p>
+<pre><code class="language-c++">OutputSchema input_schema; // The OutputSchema of the child executor, it has the type of input tuples.
+std::unique_ptr&lt;Expr&gt; expr; // The expression information
+expr_ = ExprVecExecutor::Create(expr.get(), input_schema);
+//...
+TupleBatch input;
+Vector result;
+// input.GetCols() returns all the columns in input.
+expr_.Evaluate(input.GetCols(), input.size(), result);
+</code></pre>
+<h2 id="use-shell">Use shell</h2>
+<p>If you want to execute your own SQLs, you can call <code>./wing &lt;DB file name&gt;</code> under build directory. The syntax is similar to PostgreSQL.</p>
+<p>Create a table: Different from standard SQL, the columns only have 4 types: int64, float64, int32 and varchar.</p>
+<pre><code class="language-sql">create table A(a int64, b float64, c varchar(20), d int32);
+create table A2(a int64 primary key, b float64); -- a is the primary key of A2
+create table A3(a int64 auto_increment primary key , b float64); -- a is the primary key and it is an auto_increment value (you can always pass 0 to it while inserting and it is automatically set to 1, 2, 3, 4....)
+create table A4(a int64 foreign key references A(a), b float64); -- a is a foreign key referencing A(a).
+create table A5(a int64 primary key foreign key references A(a), b float64); -- a is a foreign key referencing A(a) and it is the primary key of A5.
+</code></pre>
+<p>Drop a table:</p>
+<pre><code class="language-sql">drop table A;
+</code></pre>
+<p>Insert into a table:</p>
+<pre><code class="language-sql">insert into A values (2, 3, 'dsf', 4), (6, 7, 'asd', 8);
+</code></pre>
+<p>Delete from a table:</p>
+<pre><code class="language-sql">delete from A where a = 2;
+</code></pre>
+<p>Scan a table:</p>
+<pre><code class="language-sql">select a, b * 2 from A;
+</code></pre>
+<p>Join two tables:</p>
+<pre><code class="language-sql">select * from A, B;
+</code></pre>
+<p>Join two tables on some predicates:</p>
+<pre><code class="language-sql">select * from A join B on A.a = B.a;
+select * from A, B where A.a = B.a;
+</code></pre>
+<p>To show the plan, you can use <code>explain</code> command:</p>
+<pre><code class="language-sql">explain select * from A, B;
+</code></pre>
+<p>Here is a possible result:</p>
+<pre><code class="language-sql">Project [Output: a%0=A.a%0%int, a%2=B.a%2%int]
+  -&gt; Join [Predicate: ]
+      -&gt; Seq Scan [Table: A] [Predicate: ]
+      -&gt; Seq Scan [Table: B] [Predicate: ]
+</code></pre>
+<p>If you want to exit:</p>
+<pre><code class="language-sql">exit
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../p1/part3/" class="btn btn-neutral float-left" title="Part 3"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../part1/" class="btn btn-neutral float-right" title="Part 1">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../../p1/part3/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../part1/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
