@@ -93,6 +93,11 @@ TupleBatch input;
 Vector result;
 // input.GetCols() returns all the columns in input.
 expr_.Evaluate(input.GetCols(), input.size(), result);
+
+// Or use array of Vectors as input
+std::vector<Vector> input;
+size_t cnt = ...;
+expr_.Evaluate(input, cnt, result);
 ```
 
 ## Use shell

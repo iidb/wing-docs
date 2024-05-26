@@ -26,6 +26,29 @@ For `JoinVecExecutor`, you need to implement nested loop join. For `HashJoinVecE
 
 For `JoinVecExecutor`, you need to store all the tuples from the build table. You can just use an array of `TupleBatch` to store them, or you can utilize the dynamic size mechanism of `TupleBatch`. Each time you fetch a `TupleBatch` from the probe table and you can just calculate the join predicate for each tuple from the probe table and a batch of tuples from the build table, or you can calculate the join predicate for each tuple from the build table and a batch of tuples from the probe table. You do not need to worry about the efficiency when the build table size or the probe table size is small compared to the other. For example, if the build table has only 1 tuple but the probe table has 1000 tuples, if it calculate for each tuple from the probe table, it will evaluate the predicate for 1 tuple from the build table and 1 tuple from the probe table 1000 times. We assume that the build table and the probe table are large then there is no such problem.
 
+More specifically, suppose we calculate the predicate for one tuple from the build table and a tuple batch from the probe table. You need to create a `std::vector<Vector>`, in which the elements are constant `Vector`s from the build table and the flat `Vector`s from the probe table. Then pass the `std::vector<Vector>` to the predicate evaluation executor. For example:
+
+```cpp
+// The input of the predicate
+std::vector<Vector> input;
+// Enumerate all the columns in the tuple from the build table
+// And create a constant vector
+for (/* ... */) {
+  // The constant vector for one column
+  auto cv = Vector(VectorType::Constant, /* type */, /* the size of tuple batch from the probe table */);
+  cv.Set(0, /* the value in the tuple from the build table */);
+  input.push_back(cv);
+}
+// Enumerate all the flat vectors in the tuple batch from the probe table
+// And append them to the input.
+for (/* ... */) {
+  input.push_back(/* the flat vector */)
+}
+if (predicate_) {
+  predicate_.Evaluate(input, /* the size of tuple batch from the probe table */, /* the result vector */);
+}
+```
+
 For `HashJoinVecExecutor`, you need to read all the tuples from the build table, and build a hash table. You can just use `std::unordered_map` for this purpose. For the hash function, you can use `utils::Hash` and `utils::Hash8`. `utils::Hash` can hash any data and `utils::Hash8` can only hash a 8-byte integer. For float numbers, you can just use `utils::Hash8` to hash the binary representation. Specifically, `TupleBatch::Get` returns a `StaticFieldRef`, you can use `StaticFieldRef::ReadInt` to read a 8-byte integer from the object, even if its type is float. For strings, you need to use `StaticFieldRef::ReadStringView()` to read the string view, and use `utils::Hash`. To hash more than 1 elements, you can pass the hash value as the seed parameter, for example:
 
 ```c++
