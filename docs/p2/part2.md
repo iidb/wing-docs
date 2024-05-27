@@ -15,11 +15,11 @@ virtual size_t GetTotalOutputSize() const override {
 
 ## DP algorithm
 
-We only consider about optimizing the query as: (1) The root executor is a project executor. There is no other project executor in the executor tree. (2) The descendants of the root are join/hash join executors, except for leaves. (3) The leaf executors are sequential scan executors. The SQL statements is like: `select <columns> from <tables> where <predicates>`. For example, `select * from A, B, C where A.id = B.id and B.id = C.id;` is such a query. `select max(a) from A, B where A.id = B.id;` is not, because it has an aggregate executor. `select * from (select * from A), B;` is not, because it has multiple project executors.
+We only consider about optimizing the query as: (1) The root executor is a project executor. There is no other project executor in the executor tree. (2) The descendants of the root are join/hash join executors, except for leaves. (3) The leaf executors are sequential scan executors. The SQL statements like this: `select <columns> from <tables> where <predicates>`. For example, `select * from A, B, C where A.id = B.id and B.id = C.id;` is such a query. `select max(a) from A, B where A.id = B.id;` is not, because it has an aggregate executor. `select * from (select * from A), B;` is not, because it has multiple project executors.
 
 The DP algorithm is:
 
-Let $f(S)$ be the cost of joining tables in set $S$. Then we have $f(S)=\min_{T\in S, T\neq \emptyset, S} cost(T, S-T)+f(T)+f(S-T)$ where $cost(T, S-T)$ is the cost of joining $T$ and $S-T$. We assume that the number of tables is small and you can use bits to represent the existence of tables in $S$. For example, if there are 5 tables `A, B, C, D, E`, then $S = 10$ represents $\{B, D\}$. You can use the following method to enumerate all the subset of $S$ so that the time complexity is $O(3^n)$, where $n$ is the number of tables:
+Let $f(S)$ be the cost of joining tables in set $S$. Then we have $f(S)=\min_{T\in S, T\neq \emptyset, S} cost(T, S-T)+f(T)+f(S-T)$ where $cost(T, S-T)$ is the cost of joining $T$ and $S-T$. We assume that the number of tables is small and you can use bits to represent the existence of tables in $S$. For example, if there are 5 tables `A, B, C, D, E`, then $S = 10$ represents $\{B, D\}$. You can use the following method to enumerate all subsets of $S$ so that the time complexity is $O(3^n)$, where $n$ is the number of tables:
 
 ```cpp
 // T is the subset.
