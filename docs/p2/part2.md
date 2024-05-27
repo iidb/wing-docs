@@ -32,9 +32,9 @@ for (int T = (S - 1) & S; T != 0; T = (T - 1) & S) {
 
 You can find `nested_loop_join_cost` and `hash_join_cost` in the `OptimizerOptions`. 
 
-The cost of nested loop join is: $\textbf{nested_loop_join_cost}\times (\textbf{build table size})\times (\textbf{probe table size})$.
+The cost of nested loop join is: **nested_loop_join_cost** $\times$ (**build table size**) $\times$ (**probe table size**)
 
-The cost of hash join is: $\textbf{hash_join_cost}\times ((\textbf{build table size}) + (\textbf{probe table size}))$.
+The cost of hash join is: **hash_join_cost** $\times$ ((**build table size**) + (**probe table size**))
 
 We provide the true cardinality for each table set. It is stored in `true_cardinality_hints` in the `OptimizerOptions`.
 
