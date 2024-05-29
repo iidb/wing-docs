@@ -81,7 +81,7 @@ hashjoin_plan->left_hash_exprs_ = /* hash key of build table (left) */
 hashjoin_plan->right_hash_exprs_ = /* hash key of probe table (right) */
 ```
 
-For the project plan node, you do not need to create a new one because it is at root. You can just let its child point to a new join plan node. Also, you do not need do anything for sequential scan node (predicate has been pushed down).
+For the project plan node, you do not need to create a new one because it is at root. You need to point its child to a new join plan node. Do not forget to assign the DP result (i.e. $f(\text{all tables in query})$) to the `cost_` field of the root plan node, it will be used in test. You do not need do anything for sequential scan node (predicate has been pushed down).
 
 ## Cost function
 
