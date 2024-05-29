@@ -87,9 +87,11 @@ For the project plan node, you do not need to create a new one because it is at 
 
 You can find `scan_cost` and `hash_join_cost` in the `OptimizerOptions`. 
 
-The cost of nested loop join is: $\text{scan_cost} \times (\text{build table size}) \times (\text{probe table size})$
+The cost of nested loop join is: $\text{scan cost} \times (\text{build table size}) \times (\text{probe table size})$
 
-The cost of hash join is: $\text{hash_join_cost} \times ((\text{build table size}) + (\text{probe table size})) + \text{scan_cost}\times (\text{output size})$
+The cost of hash join is: $\text{hash join cost} \times ((\text{build table size}) + (\text{probe table size})) + \text{scan cost}\times (\text{output size})$
+
+For example, suppose the output size is 3000, the cost of joining table A (1000 rows), B (2000 rows) is $3000(\text{hash join cost})+3000(\text{scan cost})$ (hash join) or $2000000(\text{scan cost})$ (nested loop join).
 
 We provide the true cardinality for all possible table sets. It is stored in `true_cardinality_hints` in the `OptimizerOptions`. The `true_cardinality_hints` is a `std::optional` variable, you can use `true_cardinality_hints.has_value()` to test if it is valid. If it is valid, it is a `std::vector` contains pairs storing table sets and the true cardinality of the table sets. The table sets are ordered by the number calculated by $\sum_{i\in S} 2^i$ where $S$ is the table set, $i\in S$ means the $i$-th table in the table list is in $S$. For example, for 3 tables `A, B, C`, the content in the vector is: `{(), ({"A"}, ...), ({"B"}, ...), ({"A", "B"}, ...), ({"C"}, ...), ({"A", "C"}, ...), ({"B", "C"}, ...), ({"A", "B", "C"}, ...)}`. You can reorder it if necessary.
 
