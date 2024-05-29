@@ -62,6 +62,14 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">Part 2</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#add-statistics-in-your-executor">Add statistics in your executor</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#dp-algorithm">DP algorithm</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cost-function">Cost function</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#test">Test</a>
+    </li>
     </ul>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../part3/">Part 3</a>
@@ -92,7 +100,73 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="part-2">Part 2</h1>
-<p>In part 2, you will implement a bottom-up optimizer. You will implement the DP algorithm for join order.</p>
+<p>In part 2, you will implement a bottom-up optimizer. You will implement the DP algorithm to calculate the optimal join order.</p>
+<h2 id="add-statistics-in-your-executor">Add statistics in your executor</h2>
+<p>You need to add the following code in your join executor and hash join executor:</p>
+<pre><code class="language-cpp">virtual size_t GetTotalOutputSize() const override {
+  return ch0_-&gt;GetTotalOutputSize() + ch1_-&gt;GetTotalOutputSize() +
+          stat_output_size_;
+}
+</code></pre>
+<h2 id="dp-algorithm">DP algorithm</h2>
+<p>We are only considering optimizing the query under the following conditions: (1) The root executor is a project executor, with no other project executor in the executor tree. (2) The descendants of the root are join/hash join executors, except for leaves. (3) The leaf executors are sequential scan executors. (4) The number of table is small. The SQL statements like this: <code>select &lt;columns&gt; from &lt;tables&gt; where &lt;predicates&gt;</code>. For example, <code>select * from A, B, C where A.id = B.id and B.id = C.id;</code> is such a query. <code>select max(a) from A, B where A.id = B.id;</code> is not, because it has an aggregate executor. <code>select * from (select * from A), B;</code> is not, because it has multiple project executors.</p>
+<p>The DP algorithm is:</p>
+<p>Let <span class="arithmatex"><span class="MathJax_Preview">f(S)</span><script type="math/tex">f(S)</script></span> be the cost of joining tables in set <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span>. Then we have <span class="arithmatex"><span class="MathJax_Preview">f(S)=\min_{T\in S, T\neq \emptyset, S} cost(T, S-T)+f(T)+f(S-T)</span><script type="math/tex">f(S)=\min_{T\in S, T\neq \emptyset, S} cost(T, S-T)+f(T)+f(S-T)</script></span> where <span class="arithmatex"><span class="MathJax_Preview">cost(T, S-T)</span><script type="math/tex">cost(T, S-T)</script></span> is the cost of joining <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span> and <span class="arithmatex"><span class="MathJax_Preview">S-T</span><script type="math/tex">S-T</script></span>. We assume that the number of tables is small and you can use bits to represent the existence of tables in <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span>. For example, if there are 5 tables <code>A, B, C, D, E</code>, then <span class="arithmatex"><span class="MathJax_Preview">S = 10</span><script type="math/tex">S = 10</script></span> represents <span class="arithmatex"><span class="MathJax_Preview">\{B, D\}</span><script type="math/tex">\{B, D\}</script></span>. You can use the following method to enumerate all subsets of <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span> so that the time complexity is <span class="arithmatex"><span class="MathJax_Preview">O(3^n)</span><script type="math/tex">O(3^n)</script></span>, where <span class="arithmatex"><span class="MathJax_Preview">n</span><script type="math/tex">n</script></span> is the number of tables:</p>
+<pre><code class="language-cpp">// T is the subset.
+for (int T = (S - 1) &amp; S; T != 0; T = (T - 1) &amp; S) {
+  // ...
+}
+</code></pre>
+<p>You need to implement it in the <code>CostBasedOptimizer::Optimize</code> function in <code>plan/cost_based_optimizer.hpp</code>. The DP algorithm is executed if and only if the condition is satisfied (the number of table is smaller than 20) and the option <code>enable_cost_based</code> is set to true. If it is not satisfied, then we simply apply <code>ConvertToHashJoinRule</code> on the naive plan.</p>
+<p>For two table sets <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span> and <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span>, you need to check if they can use hash join. You need to collect all the predicates in the plan tree and check if there is a predicate that can be used for hash keys. More specifially, first, you need to traverse the plan tree and collect the <code>PredicateVec</code> objects in join plan nodes. (Since filter plan node has been pushed down by <code>PushDownFilterRule</code> (refer to <code>plan/rules/push_down_filter.hpp</code>) in LogicalOptimizer::Optimize (refer to <code>plan/logical_optimizer.cpp</code>), you do not need to consider filter plan node.) </p>
+<p>Each element in <code>PredicateVec</code> is a binary condition expression, refer to <code>plan/plan_expr.hpp</code>. For each predicate element in <code>PredicateVec</code>, you can check if it can be used for hash keys by the table bitsets. The table bitset is a binary number representing the table set, in which the <span class="arithmatex"><span class="MathJax_Preview">i</span><script type="math/tex">i</script></span>-th bit is 1 if and only if the <span class="arithmatex"><span class="MathJax_Preview">i</span><script type="math/tex">i</script></span>-th table is in the table set. Suppose the table bitset of <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span> is <span class="arithmatex"><span class="MathJax_Preview">bs</span><script type="math/tex">bs</script></span> and the table bitset of <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span> is <span class="arithmatex"><span class="MathJax_Preview">bt</span><script type="math/tex">bt</script></span>, you can check as follows:</p>
+<pre><code class="language-cpp">PredicateElement a;
+L = bs;
+R = bt;
+// only equal condition can use it
+if (a.expr_-&gt;op_ == OpType::EQ) {
+  if (!a.CheckRight(L) &amp;&amp; !a.CheckLeft(R) &amp;&amp; a.CheckRight(R) &amp;&amp;
+      a.CheckLeft(L)) {
+    return true;
+  }
+  if (!a.CheckLeft(L) &amp;&amp; !a.CheckRight(R) &amp;&amp; a.CheckRight(L) &amp;&amp;
+      a.CheckLeft(R)) {
+    return true;
+  }
+}
+</code></pre>
+<p>To get the table bitset of <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span>, you can enumerate all the tables in <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span> and bitwise-OR the <code>table_bitset_</code> field in their sequential scan nodes. In sequential scan nodes the <code>table_bitset_</code> field is an one-hot vector representing the table itself. You can also enumerate table sets from small to large, store the result of subsets, so that you can just perform one bitwise-OR operation to calculate the new table set using old table set results.</p>
+<p>After executing DP algorithm, you need to create a new plan. You need to create plan nodes based on your DP result.</p>
+<p>You can create a nested loop join plan node as follows:</p>
+<pre><code class="language-cpp">auto join_plan = std::make_unique&lt;JoinPlanNode&gt;();
+join_plan-&gt;table_bitset_ = /* the table bitset of the tables in the subtree */
+join_plan-&gt;ch_ = /* build table (left) */
+join_plan-&gt;ch2_ = /* probe table (right) */
+join_plan-&gt;output_schema_ = OutputSchema::Concat(
+        join_plan-&gt;ch_-&gt;output_schema_, join_plan-&gt;ch2_-&gt;output_schema_);
+join_plan-&gt;predicate_ = /* predicate, can be empty */
+</code></pre>
+<p>You can create a hash join plan node as follows: (About how to generate left/right hash expressions, you can refer to <code>plan/rules/convert_to_hash_join.hpp</code>).</p>
+<pre><code class="language-cpp">auto hashjoin_plan = std::make_unique&lt;HashJoinPlanNode&gt;();
+hashjoin_plan-&gt;table_bitset_ = /* the table bitset of the tables in the subtree */
+hashjoin_plan-&gt;ch_ = /* build table (left) */
+hashjoin_plan-&gt;ch2_ = /* probe table (right) */
+hashjoin_plan-&gt;output_schema_ = OutputSchema::Concat(
+        hashjoin_plan-&gt;ch_-&gt;output_schema_, hashjoin_plan-&gt;ch2_-&gt;output_schema_);
+hashjoin_plan-&gt;predicate_ = /* predicate, can be empty */
+hashjoin_plan-&gt;left_hash_exprs_ = /* hash key of build table (left) */
+hashjoin_plan-&gt;right_hash_exprs_ = /* hash key of probe table (right) */
+</code></pre>
+<p>For the project plan node, you do not need to create a new one because it is at root. You need to point its child to a new join plan node. Do not forget to assign the DP result (i.e. <span class="arithmatex"><span class="MathJax_Preview">f(\text{all tables in query})</span><script type="math/tex">f(\text{all tables in query})</script></span>) to the <code>cost_</code> field of the root plan node, it will be used in test. You do not need do anything for sequential scan node (predicate has been pushed down).</p>
+<h2 id="cost-function">Cost function</h2>
+<p>You can find <code>scan_cost</code> and <code>hash_join_cost</code> in the <code>OptimizerOptions</code>. </p>
+<p>The cost of nested loop join is: <span class="arithmatex"><span class="MathJax_Preview">\text{scan cost} \times (\text{build table size}) \times (\text{probe table size})</span><script type="math/tex">\text{scan cost} \times (\text{build table size}) \times (\text{probe table size})</script></span></p>
+<p>The cost of hash join is: <span class="arithmatex"><span class="MathJax_Preview">\text{hash join cost} \times ((\text{build table size}) + (\text{probe table size})) + \text{scan cost}\times (\text{output size})</span><script type="math/tex">\text{hash join cost} \times ((\text{build table size}) + (\text{probe table size})) + \text{scan cost}\times (\text{output size})</script></span></p>
+<p>For example, suppose the output size is 3000, the cost of joining table A (1000 rows), B (2000 rows) is <span class="arithmatex"><span class="MathJax_Preview">3000(\text{hash join cost})+3000(\text{scan cost})</span><script type="math/tex">3000(\text{hash join cost})+3000(\text{scan cost})</script></span> (hash join) or <span class="arithmatex"><span class="MathJax_Preview">2000000(\text{scan cost})</span><script type="math/tex">2000000(\text{scan cost})</script></span> (nested loop join).</p>
+<p>We provide the true cardinality for all possible table sets. It is stored in <code>true_cardinality_hints</code> in the <code>OptimizerOptions</code>. The <code>true_cardinality_hints</code> is a <code>std::optional</code> variable, you can use <code>true_cardinality_hints.has_value()</code> to test if it is valid. If it is valid, it is a <code>std::vector</code> contains pairs storing table sets and the true cardinality of the table sets. The table sets are ordered by the number calculated by <span class="arithmatex"><span class="MathJax_Preview">\sum_{i\in S} 2^i</span><script type="math/tex">\sum_{i\in S} 2^i</script></span> where <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span> is the table set, <span class="arithmatex"><span class="MathJax_Preview">i\in S</span><script type="math/tex">i\in S</script></span> means the <span class="arithmatex"><span class="MathJax_Preview">i</span><script type="math/tex">i</script></span>-th table in the table list is in <span class="arithmatex"><span class="MathJax_Preview">S</span><script type="math/tex">S</script></span>. For example, for 3 tables <code>A, B, C</code>, the content in the vector is: <code>{(), ({"A"}, ...), ({"B"}, ...), ({"A", "B"}, ...), ({"C"}, ...), ({"A", "C"}, ...), ({"B", "C"}, ...), ({"A", "B", "C"}, ...)}</code>. You can reorder it if necessary.</p>
+<h2 id="test">Test</h2>
+<p>Use <code>test/test_opm --gtest_filter=EasyOptimizerTest.Join5TablesCrossProduct:EasyOptimizerTest.Join3Tables</code> to test you code.</p>
+<p>These tests are simple. More tests will be added later.</p>
               
             </div>
           </div><footer>
