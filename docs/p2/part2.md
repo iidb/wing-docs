@@ -15,7 +15,7 @@ virtual size_t GetTotalOutputSize() const override {
 
 ## DP algorithm
 
-We are only considering optimizing the query under the following conditions: (1) The root executor is a project executor, with no other project executor in the executor tree. (2) The descendants of the root are join/hash join executors, except for leaves. (3) The leaf executors are sequential scan executors. (4) The number of table is small. The SQL statements like this: `select <columns> from <tables> where <predicates>`. For example, `select * from A, B, C where A.id = B.id and B.id = C.id;` is such a query. `select max(a) from A, B where A.id = B.id;` is not, because it has an aggregate executor. `select * from (select * from A), B;` is not, because it has multiple project executors.
+We are only considering optimizing the query under the following conditions: (1) The root executor is a project executor, with no other project executor in the executor tree. (2) The descendants of the root are join/hash join executors, except for leaves. (3) The leaf executors are sequential scan executors. (4) The number of table is small. Filter plan nodes have been pushed down or pushed into other plan nodes (it can be pushed into sequential scan plan node, join plan node, aggregate plan node and so on) in logical optimizer (refer to `plan/logical_optimizer.cpp` and `plan/rules/push_down_filter.hpp`). You do not need to worry about them. The SQL statements like this: `select <columns> from <tables> where <predicates>`. For example, `select * from A, B, C where A.id = B.id and B.id = C.id;` is such a query. `select max(a) from A, B where A.id = B.id;` is not, because it has an aggregate executor. `select * from (select * from A), B;` is not, because it has multiple project executors.
 
 The DP algorithm is:
 
@@ -32,7 +32,9 @@ You need to implement it in the `CostBasedOptimizer::Optimize` function in `plan
 
 For two table sets $S$ and $T$, you need to check if they can use hash join. You need to collect all the predicates in the plan tree and check if there is a predicate that can be used for hash keys. More specifially, first, you need to traverse the plan tree and collect the `PredicateVec` objects in join plan nodes. (Since filter plan node has been pushed down by `PushDownFilterRule` (refer to `plan/rules/push_down_filter.hpp`) in LogicalOptimizer::Optimize (refer to `plan/logical_optimizer.cpp`), you do not need to consider filter plan node.) 
 
-Each element in `PredicateVec` is a binary condition expression, refer to `plan/plan_expr.hpp`. For each predicate element in `PredicateVec`, you can check if it can be used for hash keys by the table bitsets. The table bitset is a binary number representing the table set, in which the $i$-th bit is 1 if and only if the $i$-th table is in the table set. Suppose the table bitset of $S$ is $bs$ and the table bitset of $T$ is $bt$, you can check as follows:
+Each element in `PredicateVec` is a binary condition expression, refer to `plan/plan_expr.hpp`. For each predicate element in `PredicateVec`, you can check if it can be used for hash keys by the table bitsets. A binary condition expression can be used for hash keys if and only if the operation is equal and both left side and right side only contains tables in one side. There are only two cases: (1) left side only contains tables in left side, right side only contains tables in right side (2) left side only contains tables in right side, right side only contains tables in left side. It is impossible that tables that the two sides contain are in the same side because if so, the predicate should have been pushed down in the logical optimizer.
+
+The table bitset is a binary number representing the table set, in which the $i$-th bit is 1 if and only if the $i$-th table is in the table set. It is used to quickly check if two table set has intersections. Suppose the table bitset of $S$ is $bs$ and the table bitset of $T$ is $bt$, you can check as follows:
 
 ```cpp
 PredicateElement a;
@@ -40,6 +42,8 @@ L = bs;
 R = bt;
 // only equal condition can use it
 if (a.expr_->op_ == OpType::EQ) {
+  // CheckLeft checks if L has intersection with tables used in left expression.
+  // CheckRight checks if R has intersection with tables used in right expression.
   if (!a.CheckRight(L) && !a.CheckLeft(R) && a.CheckRight(R) &&
       a.CheckLeft(L)) {
     return true;
@@ -51,7 +55,9 @@ if (a.expr_->op_ == OpType::EQ) {
 }
 ```
 
-To get the table bitset of $S$, you can enumerate all the tables in $S$ and bitwise-OR the `table_bitset_` field in their sequential scan nodes. In sequential scan nodes the `table_bitset_` field is an one-hot vector representing the table itself. You can also enumerate table sets from small to large, store the result of subsets, so that you can just perform one bitwise-OR operation to calculate the new table set using old table set results.
+The indices of tables in plan have been determined in planner (refer to `plan/plan.cpp`) and are different from the indices given by you, so the table bitset of table set $S$ is not simply $S$. You need to calculate them.
+
+To get the table bitset of $S$, you can enumerate all the tables in $S$ and bitwise-OR the `table_bitset_` field in their sequential scan nodes. In sequential scan nodes the `table_bitset_` field is an one-hot vector representing the table itself. You can store the result so that the result of new table set can be calculated using the results of old table set. The result of $S$ is the bitwise-OR of the result of $T$ and $S-T$ ($T$ is a non-empty subset of $S$).
 
 After executing DP algorithm, you need to create a new plan. You need to create plan nodes based on your DP result.
 
@@ -81,7 +87,7 @@ hashjoin_plan->left_hash_exprs_ = /* hash key of build table (left) */
 hashjoin_plan->right_hash_exprs_ = /* hash key of probe table (right) */
 ```
 
-For the project plan node, you do not need to create a new one because it is at root. You need to point its child to a new join plan node. Do not forget to assign the DP result (i.e. $f(\text{all tables in query})$) to the `cost_` field of the root plan node, it will be used in test. You do not need do anything for sequential scan node (predicate has been pushed down).
+For the project plan node, you do not need to create a new one because it is at root. You need to point its child to a new join plan node. Do not forget to assign the DP result (i.e. $f(\text{all tables in query})$) to the `cost_` field of the root plan node, it will be used in test. You do not need do anything for sequential scan node.
 
 ## Cost function
 
