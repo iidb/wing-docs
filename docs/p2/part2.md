@@ -22,15 +22,15 @@ The DP algorithm is:
 Let $f(S)$ be the cost of joining tables in set $S$. Then we have $f(S)=\min_{T\in S, T\neq \emptyset, S} cost(T, S-T)+f(T)+f(S-T)$ where $cost(T, S-T)$ is the cost of joining $T$ and $S-T$. We assume that the number of tables is small and you can use bits to represent the existence of tables in $S$. For example, if there are 5 tables `A, B, C, D, E`, then $S = 10$ represents $\{B, D\}$. You can use the following method to enumerate all subsets of $S$ so that the time complexity is $O(3^n)$, where $n$ is the number of tables:
 
 ```cpp
-// T is the subset.
+// T is the subset of S.
 for (int T = (S - 1) & S; T != 0; T = (T - 1) & S) {
   // ...
 }
 ```
 
-You need to implement it in the `CostBasedOptimizer::Optimize` function in `plan/cost_based_optimizer.hpp`. The DP algorithm is executed if and only if the condition is satisfied (the number of table is smaller than 20) and the option `enable_cost_based` is set to true. If it is not satisfied, then we simply apply `ConvertToHashJoinRule` on the naive plan.
+You need to implement it in the `CostBasedOptimizer::Optimize` function in `plan/cost_based_optimizer.hpp`. The DP algorithm is executed if and only if the condition is satisfied (the number of tables is smaller than 20) and the option `enable_cost_based` is set to true. If it is not satisfied, then we simply apply `ConvertToHashJoinRule` on the naive plan.
 
-For two table sets $S$ and $T$, you need to check if they can use hash join. You need to collect all the predicates in the plan tree and check if there is a predicate that can be used for hash keys. More specifially, first, you need to traverse the plan tree and collect the `PredicateVec` objects in join plan nodes. (Since filter plan node has been pushed down by `PushDownFilterRule` (refer to `plan/rules/push_down_filter.hpp`) in LogicalOptimizer::Optimize (refer to `plan/logical_optimizer.cpp`), you do not need to consider filter plan node.) 
+For two table sets $S$ and $T$, you need to check if they can use hash join. You need to collect all the predicates in the plan tree and check if there is a predicate that can be used for hash keys. More specifically, first, you need to traverse the plan tree and collect the `PredicateVec` objects in join plan nodes. (Since filter plan node has been pushed down by `PushDownFilterRule` (refer to `plan/rules/push_down_filter.hpp`) in LogicalOptimizer::Optimize (refer to `plan/logical_optimizer.cpp`), you do not need to consider filter plan node.) 
 
 Each element in `PredicateVec` is a binary condition expression, refer to `plan/plan_expr.hpp`. For each predicate element in `PredicateVec`, you can check if it can be used for hash keys by the table bitsets. A binary condition expression can be used for hash keys if and only if the operation is equal and both left side and right side only contains tables in one side. There are only two cases: (1) left side only contains tables in left side, right side only contains tables in right side (2) left side only contains tables in right side, right side only contains tables in left side. It is impossible that tables that the two sides contain are in the same side because if so, the predicate should have been pushed down in the logical optimizer.
 
@@ -59,7 +59,7 @@ The indices of tables in plan have been determined in planner (refer to `plan/pl
 
 To get the table bitset of $S$, you can enumerate all the tables in $S$ and bitwise-OR the `table_bitset_` field in their sequential scan nodes. In sequential scan nodes the `table_bitset_` field is an one-hot vector representing the table itself. You can store the result so that the result of new table set can be calculated using the results of old table set. The result of $S$ is the bitwise-OR of the result of $T$ and $S-T$ ($T$ is a non-empty subset of $S$).
 
-After executing DP algorithm, you need to create a new plan. You need to create plan nodes based on your DP result.
+After executing the DP algorithm, you need to create a new plan. You need to create plan nodes based on your DP result.
 
 You can create a nested loop join plan node as follows:
 
