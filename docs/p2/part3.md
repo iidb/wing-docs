@@ -174,7 +174,7 @@ Please investigate how to choose the order of tables in the following queries:
 
 (1) Acyclic query. In some cases, only some of orders are optimal. Please write an algorithm to find them and test your algorithm.
 
-(2) Ring query. It is proved that ring queries cannot achieve the optimal time complexity, even some of the dangling tuples cannot be removed. Please find a heuristic to (1) remove dangling tuples as many as possible, or (2) improves the performance of join as much as possible. The performance of join is calculated by total output size (refer to `ResultSet::GetTotalOutputSize`).
+(2) Ring query. It is proven that ring queries cannot achieve optimal time complexity, and even some dangling tuples cannot be removed. Please find a heuristic to (1) remove dangling tuples as many as possible, or (2) improve the performance of join as much as possible. The performance of join is calculated by total output size (refer to `ResultSet::GetTotalOutputSize`).
 
 (3) Other queries. Please find something interesting.
 
