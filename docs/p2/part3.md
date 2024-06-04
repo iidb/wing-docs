@@ -49,7 +49,7 @@ tuple = /* read from storage */
 predicate_.Evaluate(tuple, result); /* Get result */
 /* If the tuple passes the predicate */
 if (result == 1) {
-  if (bit_vector_index_ > bit_vector_.size() || bit_vector_[bit_vector_index_] == 1) {
+  if (bit_vector_index_ >= bit_vector_.size() || bit_vector_[bit_vector_index_] == 1) {
     /* append the current tuple to result */
   }
   /* increment the indexx in bit vector */
@@ -131,7 +131,7 @@ while (true) {
       }
       if (index >= bit_vector.size()) {
         /* resize the bit vector */
-        bit_vector.resize(bit_vector.size() * 2 + 10);
+        bit_vector.Resize(bit_vector.size() * 2 + 10);
         break;
       }
       break;
