@@ -42,8 +42,8 @@ L = bs;
 R = bt;
 // only equal condition can use it
 if (a.expr_->op_ == OpType::EQ) {
-  // CheckLeft checks if L has intersection with tables used in left expression.
-  // CheckRight checks if R has intersection with tables used in right expression.
+  // CheckLeft checks if L contains tables used in left expression.
+  // CheckRight checks if R contains tables used in right expression.
   if (!a.CheckRight(L) && !a.CheckLeft(R) && a.CheckRight(R) &&
       a.CheckLeft(L)) {
     return true;
@@ -103,6 +103,4 @@ We provide the true cardinality for all possible table sets. It is stored in `tr
 
 ## Test
 
-Use `test/test_opm --gtest_filter=EasyOptimizerTest.Join5TablesCrossProduct:EasyOptimizerTest.Join3Tables` to test you code.
-
-These tests are simple. More tests will be added later.
+Use `test/test_opm --gtest_filter=EasyOptimizerTest.*` to test you code.
