@@ -126,8 +126,8 @@ L = bs;
 R = bt;
 // only equal condition can use it
 if (a.expr_-&gt;op_ == OpType::EQ) {
-  // CheckLeft checks if L has intersection with tables used in left expression.
-  // CheckRight checks if R has intersection with tables used in right expression.
+  // CheckLeft checks if L contains tables used in left expression.
+  // CheckRight checks if R contains tables used in right expression.
   if (!a.CheckRight(L) &amp;&amp; !a.CheckLeft(R) &amp;&amp; a.CheckRight(R) &amp;&amp;
       a.CheckLeft(L)) {
     return true;

@@ -64,7 +64,11 @@
                   </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="./">Part 3</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#predicate-transfer">Predicate Transfer</a>
+    <li class="toctree-l2"><a class="reference internal" href="#predicate-transfer-overview">Predicate Transfer Overview</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#modified-seqscanvecexecutor">Modified SeqScanVecExecutor</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#option">Option</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#ptgraph">PtGraph</a>
     </li>
@@ -106,15 +110,127 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="part-3">Part 3</h1>
-<p>In part 3, you will implement the predicate transfer technique. </p>
-<h2 id="predicate-transfer">Predicate Transfer</h2>
+<p>In part 3, you will implement the predicate transfer algorithm. </p>
+<h2 id="predicate-transfer-overview">Predicate Transfer Overview</h2>
+<p>One of methods for enhancing join performance is to minimize the join input sizes by pre-filtering rows that will not appear in the join result. For example, predicate pushdown applies predicates on tables before executing join operations. The predicate transfer algorithm goes further. It uses other tables to create filters to filter out tuples. For example, consider a query <code>select * from A, B where A.id = B.id;</code>, suppose <code>A</code> has 10 rows and <code>B</code> has 100 rows and <code>B.id</code> is unique key. We can filter out rows in <code>B</code> where the <code>id</code> column does not appear in <code>A.id</code>. The steps of the algorithm are as follows:</p>
+<p>(1) It creates a query graph from the query. In this graph, tables are vertices and predicates are edges. Predicates must satisfy: (1) they are equvalent conditions (2) each side contains attributes from only one table. For example, <code>A.a = B.a * 2</code> satisfies the condition. <code>A.a = B.a + C.a</code> does not because one side has attributes from two tables <code>B, C</code>. <code>A.a &lt; B.a</code> does not because it is not an equvalent condition. The query graph for <code>select * from A, B, C where A.a = B.a and B.b = C.b and C.c = A.c;</code> is as follows:</p>
+<p><img alt="" src="../pics/pt_abc_ring.png" /></p>
+<p>(2) It performs forward and backward passes on the table. The forward pass traverses the query graph in a certain order and the backward pass traverses it in reverse. During these passes, the tables that are traversed earlier are used to filter out the tables that are traversed later. The filtering results are stored in bit vectors. Here is an example:</p>
+<p><img alt="" src="../pics/pt_passes.png" /></p>
+<p>(3) It performs the join operations after tables are filtered by bit vectors.</p>
+<p>A query is acyclic if and only if all tables can be removed through executing following steps periodically: (1) Remove an attribute if it is not in predicates. (2) Remove a table if its attributes are contained in another table's attributes or there are no other tables. If a query is acyclic, then there exists a tree <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span> with the tables as nodes such that the subgraph of <span class="arithmatex"><span class="MathJax_Preview">T</span><script type="math/tex">T</script></span> induced by the nodes containing an attribute <span class="arithmatex"><span class="MathJax_Preview">A</span><script type="math/tex">A</script></span> is connected for each attribute <span class="arithmatex"><span class="MathJax_Preview">A</span><script type="math/tex">A</script></span>.</p>
+<p>For example, <code>select * from A, B, C where A.a = B.a and B.b = C.b and C.c = A.c</code> is not acyclic. For tables <code>R1(a, b, c), R2(b, c, d), R3(d, e)</code>, <code>select * from R1 natural join R2 natural join R3</code> is acyclic (where <code>natural join</code> is equvalent to join on same attributes between tables, here it equals the predicate <code>R1.b = R2.b and R1.c = R2.c and R2.d = R3.d</code>). You can remove all the tables by the following steps: remove attribute <code>e</code>, remove <code>R3</code>, remove attribute <code>d</code>, remove <code>R2</code>, remove <code>R1</code>. The tree for this query is:</p>
+<p><img alt="" src="../pics/join_tree_1.png" /></p>
+<p>For tables <code>S1(a, b), S2(a, c), S3(a, d)</code>, <code>select * from S1 natural join S2 natural join S3</code> is acyclic. You can remove all the tables by the following steps: remove attribute <code>b</code>, <code>c</code>, <code>d</code>, then remove <code>S1</code>, <code>S2</code>, <code>S3</code> because they contain each other. </p>
+<p>The tree for this query is:</p>
+<p><img alt="" src="../pics/join_tree_2.png" /></p>
+<p>The query <code>select * from A, B, C where A.id = B.id + C.id</code> is not acyclic. In fact, if there is a predicate where one side has attibutes from two or more tables, the query is not acyclic. The query <code>select * from A, B, C where A.id = B.id * 2 and A.id = C.id + 3</code> is acyclic. The <code>B.id * 2</code> is not an attribute of table <code>B</code>, but it can be considered as a new attribute of <code>B</code>. </p>
+<p>If the query is acyclic, then according to the Yannakakis algorithm, this algorithm can filter out all dangling tuples (tuples that will not appear in the result) and achieve the optimal time complexity <span class="arithmatex"><span class="MathJax_Preview">O(N+OUT)</span><script type="math/tex">O(N+OUT)</script></span>, where <span class="arithmatex"><span class="MathJax_Preview">N</span><script type="math/tex">N</script></span> is the total size of tables and <span class="arithmatex"><span class="MathJax_Preview">OUT</span><script type="math/tex">OUT</script></span> is the output size. </p>
+<p>Unfortunately, if the query is not acyclic, then removing dangling tuples is NP-hard (3-SAT problem can be reduced to it by considering each clause as a table and then natural join them), the worst-case time complexity is the same as joining without predicate transfer. But in average case, this algorithm can still bring some benefit.</p>
+<p>The Yannakakis algorithm was invented in 1980s, but it is not used by today's databases because the filtering operation is costly. However, using efficient filters such as bloom filters, the cost of filtering is greatly reduced and begins to benefit join operations.</p>
+<p>In the project, you should: (1) Construct the query graph in <code>PtGraph</code>. (2) Create filters in <code>PtCreator</code>. We use bloom filter. (3) Filter tuples and update bit vectors in <code>PtUpdater</code>. (4) Implement <code>PtReducer</code> which performs all the operations: Calculate an order using the graph in <code>PtGraph</code>, use <code>PtCreator</code> to create filters, use <code>PtUpdater</code> to update bit vectors.</p>
+<p>For more information, please refer to <a href="https://www.cidrdb.org/cidr2024/papers/p22-yang.pdf">Predicate Transfer: Efficient Pre-Filtering on Multi-Join Queries</a>.</p>
+<h2 id="modified-seqscanvecexecutor">Modified SeqScanVecExecutor</h2>
+<p>A bit vector is added to <code>SeqScanVecExecutor</code>. This bit vector is generated in planner and it is initialized as empty. In the bit vector, 0 means the tuple at that index is invalid and 1 means valid. If the index is out of bounds, then the bits are considered as 1. An empty bit vector denotes an all-one vector. In <code>SeqScanVecExecutor</code>, it first reads tuples from storage, then it evaluates the predicates, then it checks the bit vector. The index in the bit vector increments each time a tuple passes the predicate. More specifically, the process is similar to the following pseudocode:</p>
+<pre><code class="language-cpp">tuple = /* read from storage */
+predicate_.Evaluate(tuple, result); /* Get result */
+/* If the tuple passes the predicate */
+if (result == 1) {
+  if (bit_vector_index_ &gt; bit_vector_.size() || bit_vector_[bit_vector_index_] == 1) {
+    /* append the current tuple to result */
+  }
+  /* increment the indexx in bit vector */
+  bit_vector_index_ += 1;
+}
+</code></pre>
+<h2 id="option">Option</h2>
+<p>You can use <code>db-&gt;SetEnablePredTrans(true);</code> to enable predicate transfer. By default predicate transfer is not enabled.</p>
 <h2 id="ptgraph">PtGraph</h2>
-<p>You will implement graph.</p>
+<p>You will implement <code>PtGraph</code> in <code>plan/predicate_transfer/pt_graph.cpp</code>. <code>PtGraph</code> processes the plan generated by cost-based optimizer (your DP algorithm in part 2) in <code>CostBasedOptimizer::Optimize</code> (refer to <code>plan/cost_based_optimizer.cpp</code>), and constructs the query graph. Besides, it finds all the sequential scan plan nodes which are used by <code>PtCreator</code> and <code>PtUpdater</code>.</p>
+<p>More specifically, you need to traverse the plan tree which only contains one project plan node at root, several join/hash join plan nodes and sequential scan plan nodes at leaves. You need to iterate over the <code>PredicateElement</code> of predicate vectors in join/hash join plan nodes and find the predicate satisfying the condition and add them into the query graph. You can use <code>PredicateElement::GetLeftTableName</code> and <code>PredicateElement::GetRightTableName</code> to get the name of the table whose attributes are referred in the left/right part. If the left/right part has attributes from two or more tables, the function returns an empty <code>std::optional&lt;std::string&gt;</code>. It can be detected by <code>std::optional&lt;&gt;::has_value</code> or <code>std::optional&lt;&gt;::operator bool</code>. If left/right part has no attributes the function returns an empty <code>std::string</code> (but not an empty <code>std::optional&lt;std::string&gt;</code>). You can just use the following code:</p>
+<pre><code class="language-cpp">for (auto&amp; pred : pred_vec.GetVec()) {
+  auto L = pred.GetLeftTableName();
+  auto R = pred.GetRightTableName();
+  if (L &amp;&amp; R) {
+    // check if L, R are empty strings.
+    // do other checks
+    // do operations...
+  }
+}
+</code></pre>
+<p>Each edge in the graph contains four members (refer to <code>plan/predicate_transfer/pt_graph.hpp</code>): <code>from</code> and <code>pred_from</code> denotes the name of table and the corresponding expression of one side. <code>to</code> and <code>pred_to</code> denotes the other side. As described above, we only consider the predicates satisfying (1) are equvalent conditions (2) each side only contains attributes from one table. The predicates satisfying these conditions always have the four members. </p>
+<p>More specifically, you can use the following code to construct an edge:</p>
+<pre><code class="language-cpp">auto L = pred.GetLeftTableName();
+auto R = pred.GetRightTableName();
+/* use Expr::clone() to deepcopy an expression */
+auto edge = Edge(L.value(), R.value(), expr.GetLeftExpr()-&gt;clone(), expr.GetRightExpr()-&gt;clone());
+</code></pre>
+<p>We use <code>std::map&lt;std::string, std::vector&lt;Edge&gt;&gt;</code> to store the graph. The key and value of the <code>std::map</code> iare the name of table and the edges originating from the table. The graph is undirected, for each pair of tables you need to add two directed edges into the graph.</p>
+<p>We use <code>std::map&lt;std::string, std::unique_ptr&lt;PlanNode&gt;&gt;</code> to store sequential scan nodes of tables. You need to traverse the plan tree, find all the sequential scan nodes, and add them into the map. The key of the map is the alias name of the table, you can get it using <code>table_name_in_sql_</code> in <code>SeqScanPlanNode</code>. You need to use it because this name is used by expressions in predicates. Then you need to use <code>PlanNode::clone</code> to clone a plan node to the map.</p>
 <h2 id="ptcreator">PtCreator</h2>
+<p>You will implement <code>PtVecCreator</code> in <code>execution/predicate_transfer/pt_vcreator.cpp</code>. This structure accepts an executor which has <code>num_cols_</code> output columns. It creates bloom filters. You need to create a bloom filter for each output column using the output data and <code>bloom_bit_per_key_n_</code> (the number of bits per key in bloom filter) and store them in <code>result_</code> in order. You need to store the hash of output data, just as you did when creating bloom filters in LSM tree.</p>
+<p>Every time you reads a tuple batch from the executor, you needs to iterate over the valid tuples in the tuple batch using <code>for(auto tuple : tuple_batch) {...}</code> or <code>for (uint32_t i = 0; i &lt; tuple_batch.size(); i++) if (tuple_batch.IsValid(i)) {...}</code>. For each tuple, you needs to calculate the hashes of all the columns in the tuple using <code>utils::BloomFilter::BloomHash</code> and store them in arrays, and create bloom filters after all data are read. You can get the element type of <span class="arithmatex"><span class="MathJax_Preview">i</span><script type="math/tex">i</script></span>-th column by <code>tuple.GetElemType(i)</code> or <code>tuple_batch.GetElemType(i)</code>. You can just use the following code to get hash:</p>
+<pre><code class="language-cpp">/* Use ReadInt if the type is FLOAT or INT. */
+uint64_t data = tuple[i].ReadInt();
+hash = utils::BloomFilter::BloomHash(std::string_view(
+    reinterpret_cast&lt;const char*&gt;(&amp;data), sizeof(uint64_t)));
+
+/* Use ReadStringView if the type is STRING */
+hash = utils::BloomFilter::BloomHash(tuple[i].ReadStringView());
+</code></pre>
 <h2 id="ptupdater">PtUpdater</h2>
+<p>You will implement <code>PtVecUpdater</code> in <code>execution/predicate_transfer/pt_vupdater.cpp</code>. This structure accepts an executor which has <code>num_cols_</code> output columns to update the bit vector of a table. The executor scans the table and outputs some necessary expressions for checking existence. </p>
+<p>Be careful that the reference to the bit vector in <code>PtVecUpdater::Execute</code> references the bit vector used in the table.</p>
+<p>Basically, for each tuple the executor returns, the corresponding bit in the bit vector is 1. You need to calculate the index of the bit vector while receiving tuples from the executor. You also need to resize the bit vector if the index is out of bounds. If the tuple should be removed because the results of expressions do not exist in the bloom filters, the 1 should be modified to 0. More specifically, you need to do the following thing:</p>
+<pre><code class="language-cpp">index = 0
+while (true) {
+  auto tuple_batch = executor-&gt;Init();
+  /* Iterate over valid tuples in the tuple batch */
+  for (auto tuple : tuple_batch) {
+    while (true) {
+      /* skip invalid */
+      if (index &lt; bit_vector.size() &amp;&amp; bit_vector[index] == 0) {
+        index += 1;
+        continue;
+      }
+      if (index &gt;= bit_vector.size()) {
+        /* resize the bit vector */
+        bit_vector.resize(bit_vector.size() * 2 + 10);
+        break;
+      }
+      break;
+    }
+    if (/* the result is not in bloom filter */) {
+      /* set the bit to 0 */
+      bit_vector[index] = 0;
+    }
+  }
+}
+</code></pre>
 <h2 id="ptreducer">PtReducer</h2>
+<p>You will implement <code>PtReducer</code> in <code>execution/predicate_transfer/pt_reducer.cpp</code>. It is used to generate bit vectors for all tables before execution. More specifically, if the predicate transfer is enabled (refer to <code>execution/execoptions.hpp</code>), then a <code>PredicateTransferPlanNode</code> is created at the root of the plan node. A <code>PtVecExecutor</code> is generated based on the <code>PredicateTransferPlanNode</code> in <code>ExecutorGenerator</code>. In <code>PtVecExecutor</code>, <code>PtReducer::Execute()</code> is called first, then starts to do actual execution. In <code>PtReducer::Execute()</code>, bit vectors of tables are updated through shared pointers. </p>
+<p><code>PtReducer</code> accepts a shared pointer to a <code>PtGraph</code> which is generated in cost based optimizer. It first calculates an order to do forward pass and backward pass. To pass the tests, you can just do the DFS and generate an order. For each pass, you iterates over all the tables, and for each table, you need to do: (1) If there are tables before it having edges to it, update the bit vectors using the bloom filters using <code>PtVecUpdater</code>. (2) If the table has edges to tables after it, then collect the expression and the table name. Then generate bloom filters using <code>PtVecCreator</code>. The generated bloom filters should be sent to the corresponding tables. </p>
+<p>To create the executors for <code>PtVecUpdater</code> and <code>PtVecCreator</code> for a table, you need to first clone the sequential scan node using the map in <code>PtGraph</code>. Then create a project plan node above it. You can create it as follows:</p>
+<pre><code class="language-cpp">auto proj_plan = std::make_unique&lt;ProjectPlanNode&gt;();
+for (auto&amp; expr : exprs /* exprs is std::vector&lt;std::unique_ptr&lt;Expr&gt;&gt; */) {
+  proj_plan-&gt;output_exprs_.push_back(expr-&gt;clone());
+  proj_plan-&gt;output_schema_.Append(
+      OutputColumnData{0, &quot;&quot;, &quot;a&quot;, expr-&gt;ret_type_, 0});
+}
+proj_plan-&gt;ch_ = std::move(/* The cloned sequential scan plan node */);
+</code></pre>
+<p>Then you can use <code>ExecutorGenerator::GenerateVec</code> to generate the executor, using the code as follows:</p>
+<pre><code class="language-cpp">auto exe = ExecutorGenerator::GenerateVec(plan.get(), db_, txn_id_);
+</code></pre>
 <h2 id="test">Test</h2>
+<p>Test your code by <code>test/test_opm --gtest_filter=*PredTrans*</code>.</p>
+<p>In the tests you will see how predicate transfer benefits join operations. You can try to remove <code>db-&gt;SetEnablePredTrans(true);</code> and see what happens.</p>
 <h2 id="bonus">Bonus</h2>
+<p>Please investigate how to choose the order of tables in the following queries:</p>
+<p>(1) Acyclic query. In some cases, only some of orders are optimal. Please write an algorithm to find them and test your algorithm.</p>
+<p>(2) Ring query. It is proven that ring queries cannot achieve optimal time complexity, and even some dangling tuples cannot be removed. Please find a heuristic to (1) remove dangling tuples as many as possible, or (2) improve the performance of join as much as possible. The performance of join is calculated by total output size (refer to <code>ResultSet::GetTotalOutputSize</code>).</p>
+<p>(3) Other queries. Please find something interesting.</p>
+<p>You do not need to solve all the problems. You can get points as long as your idea is interesting. Please submit your code and report on the Web Learning 网络学堂.</p>
               
             </div>
           </div><footer>
