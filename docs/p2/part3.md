@@ -20,13 +20,13 @@ A query is acyclic if and only if all tables can be removed through executing fo
 
 For example, `select * from A, B, C where A.a = B.a and B.b = C.b and C.c = A.c` is not acyclic. For tables `R1(a, b, c), R2(b, c, d), R3(d, e)`, `select * from R1 natural join R2 natural join R3` is acyclic (where `natural join` is equvalent to join on same attributes between tables, here it equals the predicate `R1.b = R2.b and R1.c = R2.c and R2.d = R3.d`). You can remove all the tables by the following steps: remove attribute `e`, remove `R3`, remove attribute `d`, remove `R2`, remove `R1`. The tree for this query is:
 
-![](join_tree_1.png)
+![](pics/join_tree_1.png)
 
 For tables `S1(a, b), S2(a, c), S3(a, d)`, `select * from S1 natural join S2 natural join S3` is acyclic. You can remove all the tables by the following steps: remove attribute `b`, `c`, `d`, then remove `S1`, `S2`, `S3` because they contain each other. 
 
 The tree for this query is:
 
-![](join_tree_2.png)
+![](pics/join_tree_2.png)
 
 The query `select * from A, B, C where A.id = B.id + C.id` is not acyclic. In fact, if there is a predicate where one side has attibutes from two or more tables, the query is not acyclic. The query `select * from A, B, C where A.id = B.id * 2 and A.id = C.id + 3` is acyclic. The `B.id * 2` is not an attribute of table `B`, but it can be considered as a new attribute of `B`. 
 
