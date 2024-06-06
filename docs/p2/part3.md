@@ -168,7 +168,7 @@ Then you can use `ExecutorGenerator::GenerateVec` to generate the executor, usin
 auto exe = ExecutorGenerator::GenerateVec(plan.get(), db_, txn_id_);
 ```
 
-## VecExecutor::GetTotalOutputSize
+## ResultSet::GetTotalOutputSize
 
 We use `ResultSet::GetTotalOutputSize` to test the correctness of your code. This function returns the total output size of all executors performing calculations. In the query considered in this part, it equals to: (size of all filtered tables) + (output size of all join executors) + (output size of the project executor). For example, for the first test:
 
