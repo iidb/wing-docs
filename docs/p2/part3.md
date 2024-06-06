@@ -168,6 +168,26 @@ Then you can use `ExecutorGenerator::GenerateVec` to generate the executor, usin
 auto exe = ExecutorGenerator::GenerateVec(plan.get(), db_, txn_id_);
 ```
 
+## VecExecutor::GetTotalOutputSize
+
+We use `ResultSet::GetTotalOutputSize` to test the correctness of your code. This function returns the total output size of all executors performing calculations. In the query considered in this part, it equals to: (size of all filtered tables) + (output size of all join executors) + (output size of the project executor). For example, for the first test:
+
+```sql
+create table t1(id int64, idt2 int64);
+create table t2(id int64, idt1 int64);
+insert into t1 values(3, 10), (4, 11);
+insert into t2 values(1, 2), (2, 3);
+select 1 from t1, t2 where t1.id = t2.idt1;
+```
+
+If predicate transfer is not enabled, the total output size of the last sql statement is 6 (2 from the size of table t1, 2 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size). If predicate transfer is enabled, `(4, 11)` in t1 and `(1, 2)` in t2 will be filtered out and the total output size is 4 (1 from the size of table t1, 1 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size).
+
+In tests the join order remains the same regardless of whether predicate transfer is enabled or not.
+
+Since bloom filter can produce false positives, the value returned by `ResultSet::GetTotalOutputSize` may be larger than the actual value. In the tests, an epsilon is added to the result of the standard program, but if your output still exceeds the expected limit, you can consider increasing the number of bloom filter bits per key in `execution/execoptions.hpp` to a higher value (e.g. 50). If even after this adjustment your output continues to exceed the limit, then you will need to review and check your code for potential issues.
+
+`ResultSet::GetSize` returns the size of the result set. In the above test, it is 1.
+
 ## Test
 
 Test your code by `test/test_opm --gtest_filter=*PredTrans*`.
