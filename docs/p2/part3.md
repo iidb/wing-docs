@@ -184,7 +184,7 @@ If predicate transfer is not enabled, the total output size of the last sql stat
 
 In tests the join order remains the same regardless of whether predicate transfer is enabled or not.
 
-Since bloom filter can produce false positives, the value returned by `ResultSet::GetTotalOutputSize` may be larger than the actual value. In the tests, an epsilon is added to the result of the standard program, but if your output still exceeds the expected limit, you can consider increasing the number of bloom filter bits per key in `execution/execoptions.hpp` to a higher value (e.g. 50). If even after this adjustment your output continues to exceed the limit, then you will need to review and check your code for potential issues.
+Since bloom filter can produce false positives, the value returned by `ResultSet::GetTotalOutputSize` may be larger than the actual value. In the tests, an epsilon is added to the result of the standard program, but if your output still exceeds the expected limit, you can consider increasing the number of bloom filter bits per key in `execution/execoptions.hpp` to a higher value (e.g. 1000). If even after this adjustment your output continues to exceed the limit, then you will need to review and check your code for potential issues.
 
 `ResultSet::GetSize` returns the size of the result set. In the above test, it is 1.
 
