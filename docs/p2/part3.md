@@ -180,7 +180,7 @@ insert into t2 values(1, 2), (2, 3);
 select 1 from t1, t2 where t1.id = t2.idt1;
 ```
 
-If predicate transfer is not enabled, the total output size of the last sql statement is 6 (2 from the size of table t1, 2 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size). If predicate transfer is enabled, `(4, 11)` in t1 and `(1, 2)` in t2 will be filtered out and the total output size is 4 (1 from the size of table t1, 1 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size).
+If predicate transfer is not enabled, the total output size of the last sql statement is 6 (2 from the size of table t1, 2 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size). If predicate transfer is enabled, `(4, 11)` in t1 and `(1, 2)` in t2 will be filtered out and the total output size will be 4 (1 from the size of table t1, 1 from the size of table t2, 1 from the join executor output size, and 1 from the project executor output size).
 
 In tests the join order remains the same regardless of whether predicate transfer is enabled or not.
 
