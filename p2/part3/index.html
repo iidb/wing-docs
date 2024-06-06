@@ -78,7 +78,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#ptreducer">PtReducer</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#vecexecutorgettotaloutputsize">VecExecutor::GetTotalOutputSize</a>
+    <li class="toctree-l2"><a class="reference internal" href="#resultsetgettotaloutputsize">ResultSet::GetTotalOutputSize</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#test">Test</a>
     </li>
@@ -224,7 +224,7 @@ proj_plan-&gt;ch_ = std::move(/* The cloned sequential scan plan node */);
 <p>Then you can use <code>ExecutorGenerator::GenerateVec</code> to generate the executor, using the code as follows:</p>
 <pre><code class="language-cpp">auto exe = ExecutorGenerator::GenerateVec(plan.get(), db_, txn_id_);
 </code></pre>
-<h2 id="vecexecutorgettotaloutputsize">VecExecutor::GetTotalOutputSize</h2>
+<h2 id="resultsetgettotaloutputsize">ResultSet::GetTotalOutputSize</h2>
 <p>We use <code>ResultSet::GetTotalOutputSize</code> to test the correctness of your code. This function returns the total output size of all executors performing calculations. In the query considered in this part, it equals to: (size of all filtered tables) + (output size of all join executors) + (output size of the project executor). For example, for the first test:</p>
 <pre><code class="language-sql">create table t1(id int64, idt2 int64);
 create table t2(id int64, idt1 int64);
